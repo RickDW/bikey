@@ -1,4 +1,5 @@
-from bikey.base import BaseBicycleEnv
+import gym
+import bikey
 import numpy as np
 
 # TODO: use a testing package??
@@ -9,7 +10,8 @@ def setup():
     # name of the simulink file, omitting the .slx extension
     sim_name = 'bicycle'
 
-    env = BaseBicycleEnv(simulink_file=sim_name, matlab_params=matlab_params)
+    env = gym.make("BicycleEnv-v0", simulink_file = sim_name,
+                   matlab_params = matlab_params)
 
     input("Press <enter> to start test simulation.")
 
