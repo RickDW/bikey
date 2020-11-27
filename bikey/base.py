@@ -65,7 +65,7 @@ class BaseBicycleEnv(gym.Env):
         # TODO: create a general Simulink simulation class that can run
         # simulations and handle synchronization with Python
         self.done = False
-        self.leaning_limit = 15 * (2 * pi / 360) # radians
+        self.leaning_limit = 20 * (2 * pi / 360) # radians
         self.simulink_loaded = False
         self.simulink_file = simulink_file
 
@@ -150,6 +150,7 @@ class BaseBicycleEnv(gym.Env):
             leaning_angle = abs(observations[2])
             if leaning_angle > self.leaning_limit:
                 info["largeLeanAngle"] = True
+                self.done = True
 
             # TODO make sure the simulation is paused/stopped/whatever before
             # reading out the new observations
