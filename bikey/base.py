@@ -12,7 +12,8 @@ import matlab.engine
 # session works fine, but as soon as it is run in a script it produces the
 # error.
 
-WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
+# WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
+WORKING_DIR = "~/Museum/bikey/bikey"
 
 # Properties of the motors/servos used in the bicycle robot, torques in
 # newton-meters
