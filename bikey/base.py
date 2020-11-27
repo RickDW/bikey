@@ -12,6 +12,8 @@ import matlab.engine
 # session works fine, but as soon as it is run in a script it produces the
 # error.
 
+WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
+
 # Properties of the motors/servos used in the bicycle robot, torques in
 # newton-meters
 
@@ -75,8 +77,8 @@ class BaseBicycleEnv(gym.Env):
         self.matlab = matlab.engine.start_matlab(matlab_params)
         
         # TODO: automatically find the correct working directory
-        # set working directory, allows matlab to find correct files
-        self.matlab.cd("C:/Users/Rick/Museum/bsc-thesis/bikey/bikey")
+        # sets the working directory, allows matlab to find correct files
+        self.matlab.cd(WORKING_DIR)
 
         torque_limit_propulsion = \
             maxonEC90["limitedTorque"] * transmission_ratios["propulsion"]

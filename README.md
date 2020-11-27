@@ -4,6 +4,12 @@ This package contains a custom OpenAI Gym environment that connects to a
 Simulink simulation in Matlab. A controller can be created with this
 environment using reinforcement learning.
 
+## Input files **[important]**
+For now, the locations of the input files for Simulink and Spacar must be
+changed manually in the code. To do this, change the WORKING_DIR variable
+inside the base.py module. It is recommended to use an absolute path to avoid
+confusion. The specified directory will be the working directory for Matlab.
+
 ## Installation instructions
 To install this Python package, use Python's pip tool:
 
