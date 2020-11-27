@@ -146,11 +146,13 @@ class BaseBicycleEnv(gym.Env):
             if self.get_sim_status() == 'stopped':
                 info["simulationStopped"] = True
                 self.done = True
+                self.send_sim_command('stop')
 
             leaning_angle = abs(observations[2])
             if leaning_angle > self.leaning_limit:
                 info["largeLeanAngle"] = True
                 self.done = True
+                self.send_sim_command('stop')
 
             # TODO make sure the simulation is paused/stopped/whatever before
             # reading out the new observations
