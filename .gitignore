@@ -1,0 +1,9 @@
+# simulink/spacar files
+slprj/
+bikey/*.log
+
+# files created during installation
+bikey/bikey_testing.egg-info/
+bikey/dist/
+bikey/build/
+
