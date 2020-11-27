@@ -12,8 +12,8 @@ import matlab.engine
 # session works fine, but as soon as it is run in a script it produces the
 # error.
 
-# WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
-WORKING_DIR = "~/Museum/bikey/bikey"
+WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
+# WORKING_DIR = "~/Museum/bikey/bikey"
 
 # Properties of the motors/servos used in the bicycle robot, torques in
 # newton-meters
@@ -76,7 +76,7 @@ class BaseBicycleEnv(gym.Env):
         # starting matlab / check whether specified .slx and .dat files exist
 
         self.matlab = matlab.engine.start_matlab(matlab_params)
-        
+
         # TODO: automatically find the correct working directory
         # sets the working directory, allows matlab to find correct files
         self.matlab.cd(WORKING_DIR)

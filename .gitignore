@@ -4,6 +4,7 @@ __pycache__/
 # simulink/spacar files
 slprj/
 bikey/*.log
+bikey/*.sbd
 
 # files created during installation
 *.egg-info/

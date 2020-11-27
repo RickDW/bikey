@@ -15,7 +15,7 @@ def setup():
 
     obs = env.reset()
 
-    action = np.array([[0, 0, 0]]).T
+    action = np.array([[0, 0, 1]]).T
 
     return env, obs, action
 
