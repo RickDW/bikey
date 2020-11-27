@@ -13,6 +13,7 @@ import matlab.engine
 # error.
 
 WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
+# WORKING_DIR = "~/Museum/bikey/bikey"
 
 # Properties of the motors/servos used in the bicycle robot, torques in
 # newton-meters
@@ -64,7 +65,7 @@ class BaseBicycleEnv(gym.Env):
         # TODO: create a general Simulink simulation class that can run
         # simulations and handle synchronization with Python
         self.done = False
-        self.leaning_limit = 15 * (2 * pi / 360) # radians
+        self.leaning_limit = 20 * (2 * pi / 360) # radians
         self.simulink_loaded = False
         self.simulink_file = simulink_file
 
@@ -75,7 +76,7 @@ class BaseBicycleEnv(gym.Env):
         # starting matlab / check whether specified .slx and .dat files exist
 
         self.matlab = matlab.engine.start_matlab(matlab_params)
-        
+
         # TODO: automatically find the correct working directory
         # sets the working directory, allows matlab to find correct files
         self.matlab.cd(WORKING_DIR)
@@ -145,10 +146,13 @@ class BaseBicycleEnv(gym.Env):
             if self.get_sim_status() == 'stopped':
                 info["simulationStopped"] = True
                 self.done = True
+                self.send_sim_command('stop')
 
             leaning_angle = abs(observations[2])
             if leaning_angle > self.leaning_limit:
                 info["largeLeanAngle"] = True
+                self.done = True
+                self.send_sim_command('stop')
 
             # TODO make sure the simulation is paused/stopped/whatever before
             # reading out the new observations
