@@ -1,15 +1,15 @@
 # Python package for simulated control of a robot bicycle
 
 This package contains a custom OpenAI Gym environment that connects to a 
-Simulink simulation in Matlab. With this environment a controller can be 
-created using reinforcement learning.
+Simulink simulation in Matlab. A controller can be created with this
+environment using reinforcement learning.
 
 ## Installation instructions
 To install this Python package, use Python's pip tool:
 
 ```
 # First make sure your working directory is the parent directory of the git 
-# repository (i.e. the directory containing setup.py)
+# repository (i.e. the directory containing setup.py), then run this code
 python -m pip install bikey
 ```
 
