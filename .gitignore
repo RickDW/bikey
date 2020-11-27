@@ -1,3 +1,6 @@
+# python
+__pycache__/
+
 # simulink/spacar files
 slprj/
 bikey/*.log
@@ -6,4 +9,3 @@ bikey/*.log
 *.egg-info/
 bikey/dist/
 bikey/build/
-
