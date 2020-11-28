@@ -129,9 +129,7 @@ class SpacarEnv(gym.Env):
                 self.done = True
                 self.send_sim_command('stop')
 
-            info = self.get_info(observations)
-
-            return (observations, reward, done, info)
+            return (observations, reward, self.done, info)
 
     def reset(self):
         """

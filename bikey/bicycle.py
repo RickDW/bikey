@@ -99,7 +99,7 @@ class BicycleEnv(bikey.base.SpacarEnv):
     def process_step(self, observations):
         reward = 1
 
-        leaning_angle = abs(observations[2])
+        leaning_angle = abs(observations.flatten()[2])
         done = leaning_angle > self.leaning_limit
 
         info = {}
