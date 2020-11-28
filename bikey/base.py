@@ -53,10 +53,10 @@ class SpacarEnv(gym.Env):
         # TODO: having a matlab session for every environment may not be
         # efficient
 
-        self.matlab = matlab.engine.start_matlab(matlab_params)
+        self.session = matlab.engine.start_matlab(matlab_params)
 
         # sets the working directory, allows matlab to find correct files
-        self.matlab.cd(working_dir)
+        self.session.cd(working_dir)
 
         self.simulink_loaded = False
         self.simulink_file = simulink_file
@@ -107,9 +107,9 @@ class SpacarEnv(gym.Env):
             # allow subclasses to implement their own logic here
             if done:
                 if eer in info:
-                    info[eer] += "/is_done"
+                    info[eer] += "/end_of_epi"
                 else:
-                    info[eer] = "is_done"
+                    info[eer] = "end_of_epi"
 
                 self.done = True
                 self.send_sim_command('stop')
@@ -132,8 +132,8 @@ class SpacarEnv(gym.Env):
             self.close_simulink()
 
         # TODO: make simulink GUI an option of the environment
-        self.matlab.open_system(self.simulink_file, nargout=0) # show simulink GUI
-        # self.sym_handle = self.matlab.load_system(self.simulink_file) # no GUI
+        self.session.open_system(self.simulink_file, nargout=0) # show simulink GUI
+        # self.sym_handle = self.session.load_system(self.simulink_file) # no GUI
 
         self.simulink_loaded = True
         self.done = False
@@ -142,15 +142,6 @@ class SpacarEnv(gym.Env):
         # (sim will automatically be paused afte one step by the assert block)
 
         return self.get_observations()
-
-    def process_template(self, sml_template = "template", 
-                         sml_target = "simulation", spacar_file = "spacar"):
-        """
-        Copy a Simulink file and change the settings to fit this environment.
-        """
-        # TODO implement this
-        pass
-
 
     def render(self, mode='human'):
         """
@@ -169,7 +160,7 @@ class SpacarEnv(gym.Env):
             self.close_simulink()
 
         # close matlab
-        self.matlab.quit()
+        self.session.quit()
 
     def close_simulink(self):
         """
@@ -183,16 +174,16 @@ class SpacarEnv(gym.Env):
         self.send_sim_command('stop')
 
         # close simulink
-        self.matlab.eval(f"close_system(bdroot, 0)", nargout=0)
+        self.session.eval(f"close_system(bdroot, 0)", nargout=0)
         # TODO: figure out what is going on here:
         # can't use the command below since matlab seems to think 0 is a filenme
-        # self.matlab.eval(f"close_system({self.simulink_file}, 0), nargout=0)
+        # self.session.eval(f"close_system({self.simulink_file}, 0), nargout=0)
         # gives matlab.engine.MatlabExecutionError: Invalid Simulink object handle
-        # self.matlab.close_system(self.simulink_file, 0, nargout=0)
+        # self.session.close_system(self.simulink_file, 0, nargout=0)
         # gives another error
 
         # remove observations stored in the workspace (variable 'out')
-        self.matlab.clear('out', nargout=0)
+        self.session.clear('out', nargout=0)
 
         # register simulink no longer being available
         self.simulink_loaded = False
@@ -208,14 +199,14 @@ class SpacarEnv(gym.Env):
         actions -- A numpy array with shape conforming to the action space.
         """
         string_repr = str(actions.flatten())
-        self.matlab.set_param(
+        self.session.set_param(
             f'{self.simulink_file}/actions', 'value', string_repr, nargout=0)
 
         # TODO remove this part of the synchronization mechanism, seems
         # redundant
-        simulation_time_matlab = self.matlab.get_param(
-            f'{self.simulink_file}', 'SimulationTime')
-        self.matlab.set_param(
+        simulation_time_matlab = self.session.get_param(
+            self.simulink_file, 'SimulationTime')
+        self.session.set_param(
             f'{self.simulink_file}/simulation_time_python', 'value',
             str(simulation_time_matlab), nargout=0)
 
@@ -229,7 +220,7 @@ class SpacarEnv(gym.Env):
             'start', 'pause', 'continue', 'stop', and 'update'.
         """
         if self.simulink_loaded:
-            self.matlab.set_param(
+            self.session.set_param(
                 self.simulink_file, 'SimulationCommand', command, nargout=0)
 
     def get_observations(self):
@@ -242,8 +233,8 @@ class SpacarEnv(gym.Env):
         A numpy array with shape conforming to the defined observation space,
         or None if the simulation has not been started.
         """
-        if self.matlab.exist('out'):
-            return np.array(self.matlab.eval('out.observations')).T
+        if self.session.exist('out'):
+            return np.array(self.session.eval('out.observations')).T
         else:
             return None
 
@@ -258,7 +249,7 @@ class SpacarEnv(gym.Env):
         """
         # TODO: throw an error if simulink is not loaded
         # TODO: also throw an error if matlab is no longer active
-        return self.matlab.get_param(self.simulink_file, 'SimulationStatus')
+        return self.session.get_param(self.simulink_file, 'SimulationStatus')
 
     def process_step(self, observations):
         reward = 0
@@ -266,3 +257,35 @@ class SpacarEnv(gym.Env):
         info = {}
         return (reward, done, info)
 
+
+def process_template(output_file, template_file, spacar_file, initial_action, 
+                     working_dir = os.getcwd(), session = None):
+    """
+    Creates a Simulink file that is ready to be used in a simulation.
+    """
+    new_session = False
+
+    if session is None:
+        # start a new matlab session
+        session = matlab.engine.start_matlab()
+        new_session = True
+
+    session.cd(working_dir)
+    
+    session.load_system(template_file, nargout = 0)
+
+    # set the action that is performed once when the env is reset
+    str_repr = str(initial_action.flatten())
+    session.set_param(
+        f"{template_file}/actions", 'value', initial_action, nargout = 0)
+
+    # point spacar towards the correct model definition
+    session.set_param(
+        f"{template_file}/spacar", 'filenm', f"'{spacar_file}'", nargout = 0)
+
+    # save changes to output_file
+    session.save_system(template_file, output_file, nargout = 0)
+
+    if new_session:
+        # quit matlab
+        session.quit()
