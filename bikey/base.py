@@ -1,8 +1,10 @@
-import os
-import gym
 import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
+
+import gym
 import numpy as np
+import os
+import shutil
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's
@@ -12,15 +14,24 @@ import numpy as np
 # session works fine, but as soon as it is run in a script it produces the
 # error.
 
-WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
-# WORKING_DIR = "~/Museum/bikey/bikey"
+# figures out where the current file (i.e. base.py) is located
+# this also contains the simulink template file(s)
+template_dir = os.path.dirname(os.path.realpath(__file__))
+# template_dir = "C:/Users/Rick/Museum/bikey/bikey"
+# template_dir = "~/Museum/bikey/bikey"
 
 # TODO: update all documentation after refactoring
 
+# only settings supported by SpacarEnv.change_settings should be used
+_default_sim_config = {
+    "output_sbd": False,
+    "use_spadraw": False
+}
+
 class SpacarEnv(gym.Env):
-    def __init__(self, action_space, observation_space, 
-                 simulink_file = "simulation", matlab_params='-desktop', 
-                 working_dir = os.getcwd()):
+    def __init__(self, action_space, observation_space, simulink_file,
+                 simulink_config = _default_sim_config,
+                 matlab_params='-desktop', working_dir = os.getcwd()):
         """
         This environment wraps a general physics simulation, run in Spacar.
 
@@ -57,9 +68,13 @@ class SpacarEnv(gym.Env):
 
         # sets the working directory, allows matlab to find correct files
         self.session.cd(working_dir)
+        self.working_dir = working_dir
 
         self.simulink_loaded = False
         self.simulink_file = simulink_file
+
+        self.settings_changed = False
+        self.simulink_config = simulink_config
 
         # defines which actions and observations are allowed
         self.action_space = action_space
@@ -136,6 +151,12 @@ class SpacarEnv(gym.Env):
         # self.sym_handle = self.session.load_system(self.simulink_file) # no GUI
 
         self.simulink_loaded = True
+
+        if not self.settings_changed:
+            # make sure the simulation file is set up correctly
+            self.change_settings()
+            self.settings_changed = True
+
         self.done = False
 
         self.send_sim_command('start')
@@ -143,14 +164,54 @@ class SpacarEnv(gym.Env):
 
         return self.get_observations()
 
-    def render(self, mode='human'):
+    def copy_template(self, destination_file, template_file = os.path.join(
+            template_dir, "template.slx")):
         """
-        Render the environment. Not supported for this environment.
+        Makes a copy of template_file.
 
-        Arguments:
-        mode -- The type of render action to perform.
+        If destination_file already exists it will be replaced.
         """
-        super().render(mode=mode) # raise an exception
+
+        shutil.copyfile(
+            template_file, os.path.join(self.working_dir, destination_file))
+
+    def change_settings(self):
+        """
+        Makes some changes to the opened Simulink file and saves them.
+        """
+        conf = self.simulink_config
+
+        if "initial_action" in conf:
+            # set the action that is performed once when the env is reset
+            str_repr = str(conf["initial_action"].flatten())
+            self.session.set_param(
+                f"{self.simulink_file}/actions", 'value', str_repr, nargout = 0)
+
+        if "spacar_file" in conf:
+            # point spacar towards the correct model definition
+            spacar_file = conf["spacar_file"]
+            self.session.set_param(
+                f"{self.simulink_file}/spacar", 'filename', f"'{spacar_file}'",
+                nargout = 0)
+
+        convert = lambda boolean: 'on' if boolean else 'off'
+
+        if "output_sbd" in conf:
+            output_sbd = conf["output_sbd"]
+            # turn on/off .sbd output (used for making movies of episodes)
+            self.session.set_param(
+                f"{self.simulink_file}/spacar", "output_sbd",
+                convert(output_sbd), nargout = 0)
+
+        if "use_spadraw" in conf:
+            use_spadraw = conf["use_spadraw"]
+            # turn on/off visualization during episodes
+            self.session.set_param(
+                f"{self.simulink_file}/spacar", "use_spadraw",
+                convert(use_spadraw), nargout = 0)
+
+        # save changes
+        self.session.save_system(self.simulink_file)
 
     def close(self):
         """
@@ -256,36 +317,3 @@ class SpacarEnv(gym.Env):
         done = False
         info = {}
         return (reward, done, info)
-
-
-def process_template(output_file, template_file, spacar_file, initial_action, 
-                     working_dir = os.getcwd(), session = None):
-    """
-    Creates a Simulink file that is ready to be used in a simulation.
-    """
-    new_session = False
-
-    if session is None:
-        # start a new matlab session
-        session = matlab.engine.start_matlab()
-        new_session = True
-
-    session.cd(working_dir)
-    
-    session.load_system(template_file, nargout = 0)
-
-    # set the action that is performed once when the env is reset
-    str_repr = str(initial_action.flatten())
-    session.set_param(
-        f"{template_file}/actions", 'value', initial_action, nargout = 0)
-
-    # point spacar towards the correct model definition
-    session.set_param(
-        f"{template_file}/spacar", 'filenm', f"'{spacar_file}'", nargout = 0)
-
-    # save changes to output_file
-    session.save_system(template_file, output_file, nargout = 0)
-
-    if new_session:
-        # quit matlab
-        session.quit()

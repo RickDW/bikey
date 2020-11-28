@@ -1,5 +1,8 @@
-import base
+import gym
+import bikey.base
 from math import inf, pi
+import numpy as np
+import os
 
 # Properties of the motors/servos used in the bicycle robot, torques in
 # Newton-meters
@@ -22,8 +25,17 @@ transmission_ratios = {
     "propulsion": 1
 }
 
-class BicycleEnv(base.SpacarEnv):
-    def __init__(self, simulink_file = "simulation", matlab_params='-desktop', 
+_default_sim_config = {
+    "initial_action": np.zeros((3,1)),
+    "spacar_file": "bicycle",
+    "output_sbd": True,
+    "use_spadraw": False
+}
+
+class BicycleEnv(bikey.base.SpacarEnv):
+    def __init__(self, simulink_file = "simulation",
+                 simulink_config = _default_sim_config,
+                 matlab_params='-desktop',
                  working_dir = os.getcwd()):
         """
         This environment wraps the physics simulation of a scaled down bicycle.
@@ -75,8 +87,8 @@ class BicycleEnv(base.SpacarEnv):
                 shape = (6, 1),
                 dtype = np.float32)
 
-        super().__init__(action_space, observation_space, simulink_file, 
-                         working_dir, matlab_params)
+        super().__init__(action_space, observation_space, simulink_file,
+                         simulink_config, matlab_params, working_dir)
 
         # define rewards
         self.reward_range = (-inf, inf) #TODO
@@ -93,4 +105,3 @@ class BicycleEnv(base.SpacarEnv):
         info = {}
 
         return (reward, done, info)
-
