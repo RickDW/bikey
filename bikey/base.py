@@ -17,23 +17,23 @@ import shutil
 # figures out where the current file (i.e. base.py) is located
 # this also contains the simulink template file(s)
 template_dir = os.path.dirname(os.path.realpath(__file__))
-# template_dir = "C:/Users/Rick/Museum/bikey/bikey"
-# template_dir = "~/Museum/bikey/bikey"
 
 # TODO: update all documentation after refactoring
 
-# only settings supported by SpacarEnv.change_settings should be used
+# only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
     "output_sbd": False,
     "use_spadraw": False
 }
 
 class SpacarEnv(gym.Env):
-    def __init__(self, action_space, observation_space, simulink_file,
-                 simulink_config = _default_sim_config,
-                 matlab_params='-desktop', working_dir = os.getcwd()):
+    def __init__(self, action_space, observation_space, simulink_file, 
+                 working_dir = os.getcwd(), create_from_template = False, 
+                 template = "template.slx", in_template_dir = True, 
+                 simulink_config = _default_sim_config, matlab_params =
+                 '-desktop'):
         """
-        This environment wraps a general physics simulation, run in Spacar.
+        This environment wraps a general physics simulation running in Spacar.
 
         # TODO this environment could use a bit more context. Also, a quick
         # overview of how the synchronization works would be nice.
@@ -54,13 +54,9 @@ class SpacarEnv(gym.Env):
 
         super().__init__()
 
-        # TODO: find out if gym can handle positional arguments
-        # TODO: automatically find the correct working directory
         # TODO: check whether specified .slx and .dat files exist
         # TODO: catch all potential errors caused by simulink simulation not
         # yet being available
-        # TODO: create a general Simulink simulation class that can run
-        # simulations and handle synchronization with Python
         # TODO: having a matlab session for every environment may not be
         # efficient
 
@@ -70,8 +66,11 @@ class SpacarEnv(gym.Env):
         self.session.cd(working_dir)
         self.working_dir = working_dir
 
+        if create_from_template:
+            self.copy_template(simulink_file, template, in_template_dir)
+
         self.simulink_loaded = False
-        self.simulink_file = simulink_file
+        self.model_name = simulink_file[:-4] # remove the .slx extension
 
         self.settings_changed = False
         self.simulink_config = simulink_config
@@ -145,8 +144,8 @@ class SpacarEnv(gym.Env):
             self.close_simulink()
 
         # TODO: make simulink GUI an option of the environment
-        self.session.open_system(self.simulink_file, nargout=0) # show simulink GUI
-        # self.sym_handle = self.session.load_system(self.simulink_file) # no GUI
+        self.session.open_system(self.model_name, nargout=0) # show simulink GUI
+        # self.sym_handle = self.session.load_system(self.model_name) # no GUI
 
         self.simulink_loaded = True
 
@@ -162,16 +161,26 @@ class SpacarEnv(gym.Env):
 
         return self.get_observations()
 
-    def copy_template(self, destination_file, template_file = os.path.join(
-            template_dir, "template.slx")):
+    def copy_template(self, destination, template = "template.slx", 
+                      in_template_dir = True):
         """
-        Makes a copy of template_file.
+        Makes a copy of the specified template in this env's working directory.
 
-        If destination_file already exists it will be replaced.
+        If in_template_dir is True, a file located in the template_dir with
+        name template will be searched for. Otherwise template will be
+        considered a fully specified file path.
+
+        If destination already exists it will be replaced.
         """
 
-        shutil.copyfile(
-            template_file, os.path.join(self.working_dir, destination_file))
+        if in_template_dir:
+            shutil.copyfile(
+                os.path.join(template_dir, template),
+                os.path.join(self.working_dir, destination))
+
+        else:
+            shutil.copyfile(
+                template, os.path.join(self.working_dir, destination))
 
     def change_settings(self):
         """
@@ -183,13 +192,13 @@ class SpacarEnv(gym.Env):
             # set the action that is performed once when the env is reset
             str_repr = str(conf["initial_action"].flatten())
             self.session.set_param(
-                f"{self.simulink_file}/actions", 'value', str_repr, nargout = 0)
+                f"{self.model_name}/actions", 'value', str_repr, nargout = 0)
 
         if "spacar_file" in conf:
             # point spacar towards the correct model definition
             spacar_file = conf["spacar_file"]
             self.session.set_param(
-                f"{self.simulink_file}/spacar", 'filename', f"'{spacar_file}'",
+                f"{self.model_name}/spacar", 'filename', f"'{spacar_file}'",
                 nargout = 0)
 
         convert = lambda boolean: 'on' if boolean else 'off'
@@ -198,18 +207,18 @@ class SpacarEnv(gym.Env):
             output_sbd = conf["output_sbd"]
             # turn on/off .sbd output (used for making movies of episodes)
             self.session.set_param(
-                f"{self.simulink_file}/spacar", "output_sbd",
+                f"{self.model_name}/spacar", "output_sbd",
                 convert(output_sbd), nargout = 0)
 
         if "use_spadraw" in conf:
             use_spadraw = conf["use_spadraw"]
             # turn on/off visualization during episodes
             self.session.set_param(
-                f"{self.simulink_file}/spacar", "use_spadraw",
+                f"{self.model_name}/spacar", "use_spadraw",
                 convert(use_spadraw), nargout = 0)
 
         # save changes
-        self.session.save_system(self.simulink_file)
+        self.session.save_system(self.model_name)
 
     def close(self):
         """
@@ -236,9 +245,9 @@ class SpacarEnv(gym.Env):
         self.session.eval(f"close_system(bdroot, 0)", nargout=0)
         # TODO: figure out what is going on here:
         # can't use the command below since matlab seems to think 0 is a filenme
-        # self.session.eval(f"close_system({self.simulink_file}, 0), nargout=0)
+        # self.session.eval(f"close_system({self.model_name}, 0), nargout=0)
         # gives matlab.engine.MatlabExecutionError: Invalid Simulink object handle
-        # self.session.close_system(self.simulink_file, 0, nargout=0)
+        # self.session.close_system(self.model_name, 0, nargout=0)
         # gives another error
 
         # remove observations stored in the workspace (variable 'out')
@@ -259,14 +268,14 @@ class SpacarEnv(gym.Env):
         """
         string_repr = str(actions.flatten())
         self.session.set_param(
-            f'{self.simulink_file}/actions', 'value', string_repr, nargout=0)
+            f'{self.model_name}/actions', 'value', string_repr, nargout=0)
 
         # TODO remove this part of the synchronization mechanism, seems
         # redundant
         simulation_time_matlab = self.session.get_param(
-            self.simulink_file, 'SimulationTime')
+            self.model_name, 'SimulationTime')
         self.session.set_param(
-            f'{self.simulink_file}/simulation_time_python', 'value',
+            f'{self.model_name}/simulation_time_python', 'value',
             str(simulation_time_matlab), nargout=0)
 
     def send_sim_command(self, command):
@@ -280,7 +289,7 @@ class SpacarEnv(gym.Env):
         """
         if self.simulink_loaded:
             self.session.set_param(
-                self.simulink_file, 'SimulationCommand', command, nargout=0)
+                self.model_name, 'SimulationCommand', command, nargout=0)
 
     def get_observations(self):
         """
@@ -308,7 +317,7 @@ class SpacarEnv(gym.Env):
         """
         # TODO: throw an error if simulink is not loaded
         # TODO: also throw an error if matlab is no longer active
-        return self.session.get_param(self.simulink_file, 'SimulationStatus')
+        return self.session.get_param(self.model_name, 'SimulationStatus')
 
     def process_step(self, observations):
         reward = 0

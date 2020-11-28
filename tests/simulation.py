@@ -6,17 +6,16 @@ import numpy as np
 # TODO: use a testing package?
 
 def setup():
-    sim_file = "simulation_test.slx"
     env = gym.make(
         "BicycleEnv-v0",
-        simulink_file = sim_file[:-4],
-        simulink_config = {
-            "initial_action": np.array([[0, 0, 0]]).T,
-            "spacar_file": "bicycle",
-            "output_sbd": False,
-            "use_spadraw": False})
-
-    env.copy_template(sim_file)
+        simulink_file = "simulation_test.slx",
+        create_from_template = True,
+        simulink_config = {"output_sbd": True})
+        # simulink_config = {
+        #     "initial_action": np.array([[0, 0, 0]]).T,
+        #     "spacar_file": "bicycle",
+        #     "output_sbd": False,
+        #     "use_spadraw": False})
 
     return env
 
