@@ -33,9 +33,9 @@ _default_sim_config = {
 }
 
 class BicycleEnv(bikey.base.SpacarEnv):
-    def __init__(self, simulink_file, working_dir = os.getcwd(), 
+    def __init__(self, simulink_file, working_dir = os.getcwd(),
                  create_from_template = False, template = "bicycle_template.slx",
-                 in_template_dir = True, simulink_config = 
+                 in_template_dir = True, simulink_config =
                  _default_sim_config, matlab_params = '-desktop'):
         """
         This environment wraps the physics simulation of a scaled down bicycle.
@@ -87,9 +87,12 @@ class BicycleEnv(bikey.base.SpacarEnv):
                 shape = (6, 1),
                 dtype = np.float32)
 
+        config = _default_sim_config.copy()
+        config.update(simulink_config)
+
         super().__init__(action_space, observation_space, simulink_file,
                          working_dir, create_from_template, template,
-                         in_template_dir, simulink_config, matlab_params)
+                         in_template_dir, config, matlab_params)
 
         # define rewards
         self.reward_range = (-inf, inf) #TODO

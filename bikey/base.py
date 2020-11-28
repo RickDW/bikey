@@ -27,9 +27,9 @@ _default_sim_config = {
 }
 
 class SpacarEnv(gym.Env):
-    def __init__(self, action_space, observation_space, simulink_file, 
-                 working_dir = os.getcwd(), create_from_template = False, 
-                 template = "template.slx", in_template_dir = True, 
+    def __init__(self, action_space, observation_space, simulink_file,
+                 working_dir = os.getcwd(), create_from_template = False,
+                 template = "template.slx", in_template_dir = True,
                  simulink_config = _default_sim_config, matlab_params =
                  '-desktop'):
         """
@@ -72,8 +72,9 @@ class SpacarEnv(gym.Env):
         self.simulink_loaded = False
         self.model_name = simulink_file[:-4] # remove the .slx extension
 
-        self.settings_changed = False
-        self.simulink_config = simulink_config
+        config = _default_sim_config.copy()
+        config.update(simulink_config)
+        self.simulink_config = config
 
         # defines which actions and observations are allowed
         self.action_space = action_space
@@ -144,15 +145,13 @@ class SpacarEnv(gym.Env):
             self.close_simulink()
 
         # TODO: make simulink GUI an option of the environment
-        self.session.open_system(self.model_name, nargout=0) # show simulink GUI
+        # open the simulink model
+        self.session.open_system(self.model_name, nargout=0)
         # self.sym_handle = self.session.load_system(self.model_name) # no GUI
-
         self.simulink_loaded = True
 
-        if not self.settings_changed:
-            # make sure the simulation file is set up correctly
-            self.change_settings()
-            self.settings_changed = True
+        # make sure the simulation file is set up correctly
+        self.change_settings()
 
         self.done = False
 
@@ -161,7 +160,7 @@ class SpacarEnv(gym.Env):
 
         return self.get_observations()
 
-    def copy_template(self, destination, template = "template.slx", 
+    def copy_template(self, destination, template = "template.slx",
                       in_template_dir = True):
         """
         Makes a copy of the specified template in this env's working directory.
@@ -184,7 +183,7 @@ class SpacarEnv(gym.Env):
 
     def change_settings(self):
         """
-        Makes some changes to the opened Simulink file and saves them.
+        Makes some changes to the opened Simulink file.
         """
         conf = self.simulink_config
 
@@ -217,9 +216,6 @@ class SpacarEnv(gym.Env):
                 f"{self.model_name}/spacar", "use_spadraw",
                 convert(use_spadraw), nargout = 0)
 
-        # save changes
-        self.session.save_system(self.model_name)
-
     def close(self):
         """
         Shutdown Simulink and Matlab.
@@ -235,13 +231,13 @@ class SpacarEnv(gym.Env):
         Stop the Simulink simulation, close Simulink, and clean the workspace.
 
         Should only be called if env.simulink_loaded is True, i.e. anytime after
-        a env.reset(), but not after env.close() or env.close_simulink(). will
-        only display a warning message if this is ignored.
+        a env.reset(), but not after env.close() or env.close_simulink().
+        However this will only display a warning message if this is ignored.
         """
         # simulink cannot be closed while simulation is running, so stop it
         self.send_sim_command('stop')
 
-        # close simulink
+        # close simulink and do not save changes
         self.session.eval(f"close_system(bdroot, 0)", nargout=0)
         # TODO: figure out what is going on here:
         # can't use the command below since matlab seems to think 0 is a filenme
