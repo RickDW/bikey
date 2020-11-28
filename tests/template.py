@@ -1,4 +1,5 @@
-import gym, bikey
+import gym
+import bikey
 import numpy as np
 
 env = gym.make(
@@ -6,7 +7,7 @@ env = gym.make(
     simulink_file = "copy_test",
     simulink_config = {
         "initial_action": np.array([[1, 2, 3]]).T,
-        "spacar_file": "bicycle22",
+        "spacar_file": "bicycle",
         "output_sbd": False,
         "use_spadraw": True
     })

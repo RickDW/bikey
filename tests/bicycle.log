@@ -202,9 +202,9 @@ SPACAR Student  version 05-Mar-2019 (0064/DP/C300/D120/E60/I12/O25).
  inpute 11 1 0.0 20 0.0  % TODO should this stay?
   
  %% Dynamics - timestep
-* Invalid deformation parameter   1
- timestep 10.0 1000
+ % timestep 10.0 1000
   
+* Invalid deformation parameter   1
  end
 
  NEO =   63, NEMM =   63, NEM =   67, NEC =   70.
