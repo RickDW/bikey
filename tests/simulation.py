@@ -26,7 +26,7 @@ def main():
 
     obs = env.reset()
 
-    action = np.array([[0, 0, 1]]).T
+    action = np.array([[0, 0, 0.01]]).T
 
     while True:
         results = env.step(action)
