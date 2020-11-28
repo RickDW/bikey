@@ -1,8 +1,8 @@
-from math import inf, pi
-import numpy as np
+import os
 import gym
 import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
+import numpy as np
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's
@@ -15,34 +15,17 @@ import matlab.engine
 WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
 # WORKING_DIR = "~/Museum/bikey/bikey"
 
-# Properties of the motors/servos used in the bicycle robot, torques in
-# newton-meters
+# TODO: update all documentation after refactoring
 
-maxonEC90 = {
-    "stallTorque": 4.940,
-    "nominalTorque": 0.44,
-    "limitedTorque": 0.4
-}
-
-maxonF2140 = {
-    "stallTorque": 0.031,
-    "nominalTorque": 0.012,
-    "limitedTorque": 0.01
-}
-
-transmission_ratios = {
-    "steering": 30,
-    "bodyLeaning": 1,
-    "propulsion": 1
-}
-
-class BaseBicycleEnv(gym.Env):
-    metadata = {'render.modes': []}
-
-    def __init__(self, simulink_file='bicycle', spacar_file='bicycle',
-                 matlab_params=''):
+class SpacarEnv(gym.Env):
+    def __init__(self, action_space, observation_space, 
+                 simulink_file = "simulation", matlab_params='-desktop', 
+                 working_dir = os.getcwd()):
         """
-        This environment wraps a physics simulation of a scaled down bicycle.
+        This environment wraps a general physics simulation, run in Spacar.
+
+        # TODO this environment could use a bit more context. Also, a quick
+        # overview of how the synchronization works would be nice.
 
         Keyword arguments:
         simulink_file -- The name of the simulink file that is used to run the
@@ -57,63 +40,33 @@ class BaseBicycleEnv(gym.Env):
             simulation software works.
         matlab_params -- Parameters passed to Matlab during startup.
         """
+
         super().__init__()
 
+        # TODO: find out if gym can handle positional arguments
+        # TODO: automatically find the correct working directory
+        # TODO: check whether specified .slx and .dat files exist
         # TODO: catch all potential errors caused by simulink simulation not
         # yet being available
-
         # TODO: create a general Simulink simulation class that can run
         # simulations and handle synchronization with Python
-        self.done = False
-        self.leaning_limit = 20 * (2 * pi / 360) # radians
-        self.simulink_loaded = False
-        self.simulink_file = simulink_file
-
         # TODO: having a matlab session for every environment may not be
         # efficient
 
-        # TODO: make sure the working directory is set correctly before
-        # starting matlab / check whether specified .slx and .dat files exist
-
         self.matlab = matlab.engine.start_matlab(matlab_params)
 
-        # TODO: automatically find the correct working directory
         # sets the working directory, allows matlab to find correct files
-        self.matlab.cd(WORKING_DIR)
+        self.matlab.cd(working_dir)
 
-        torque_limit_propulsion = \
-            maxonEC90["limitedTorque"] * transmission_ratios["propulsion"]
-        torque_limit_steering = \
-            maxonEC90["limitedTorque"] * transmission_ratios["steering"]
-        torque_limit_leaning = \
-            maxonF2140["limitedTorque"] * transmission_ratios["bodyLeaning"]
+        self.simulink_loaded = False
+        self.simulink_file = simulink_file
 
-        torque_limits = np.array([
-            [torque_limit_steering],
-            [torque_limit_leaning],
-            [torque_limit_propulsion]],
-            dtype = np.float32)
+        # defines which actions and observations are allowed
+        self.action_space = action_space
+        self.observation_space = observation_space
 
-        #define actions
-        self.action_space = gym.spaces.Box(
-                low = -torque_limits,
-                high = torque_limits,
-                shape = (3, 1),
-                dtype = np.float32)
-
-        infinity = np.array([[inf], [inf], [inf], [inf], [inf], [inf]],
-                            dtype = np.float32)
-
-        # define observations
-        # TODO: give a better description of the observations?
-        self.observation_space = gym.spaces.Box(
-                low = -infinity,
-                high = infinity,
-                shape = (6, 1),
-                dtype = np.float32)
-
-        # define rewards
-        self.reward_range = (-inf, inf) #TODO
+        # if simulink_loaded is True, done indicates the end of the episode
+        self.done = False
 
     def step(self, actions):
         """
@@ -139,24 +92,31 @@ class BaseBicycleEnv(gym.Env):
             self.update_matlab(actions)
             self.send_sim_command('continue')
 
-            observations = self.get_observations()
-            info = {}
-            reward = 1 # 1 point for every step, as long as you can keep riding
-
-            if self.get_sim_status() == 'stopped':
-                info["simulationStopped"] = True
-                self.done = True
-                self.send_sim_command('stop')
-
-            leaning_angle = abs(observations[2])
-            if leaning_angle > self.leaning_limit:
-                info["largeLeanAngle"] = True
-                self.done = True
-                self.send_sim_command('stop')
-
             # TODO make sure the simulation is paused/stopped/whatever before
             # reading out the new observations
-            return (observations, reward, self.done, info)
+            observations = self.get_observations()
+
+            # subclasses can easily implement their own behaviour here
+            reward, done, info = self.process_step(observations)
+            eer = "episode_end_reason"
+
+            if self.get_sim_status() == 'stopped':
+                info[eer] = "end_of_sim"
+                self.done = True
+
+            # allow subclasses to implement their own logic here
+            if done:
+                if eer in info:
+                    info[eer] += "/is_done"
+                else:
+                    info[eer] = "is_done"
+
+                self.done = True
+                self.send_sim_command('stop')
+
+            info = self.get_info(observations)
+
+            return (observations, reward, done, info)
 
     def reset(self):
         """
@@ -183,6 +143,15 @@ class BaseBicycleEnv(gym.Env):
 
         return self.get_observations()
 
+    def process_template(self, sml_template = "template", 
+                         sml_target = "simulation", spacar_file = "spacar"):
+        """
+        Copy a Simulink file and change the settings to fit this environment.
+        """
+        # TODO implement this
+        pass
+
+
     def render(self, mode='human'):
         """
         Render the environment. Not supported for this environment.
@@ -204,7 +173,7 @@ class BaseBicycleEnv(gym.Env):
 
     def close_simulink(self):
         """
-        Stop the Simulink simulation, close Simulink, and clean workspace.
+        Stop the Simulink simulation, close Simulink, and clean the workspace.
 
         Should only be called if env.simulink_loaded is True, i.e. anytime after
         a env.reset(), but not after env.close() or env.close_simulink(). will
@@ -242,9 +211,10 @@ class BaseBicycleEnv(gym.Env):
         self.matlab.set_param(
             f'{self.simulink_file}/actions', 'value', string_repr, nargout=0)
 
+        # TODO remove this part of the synchronization mechanism, seems
+        # redundant
         simulation_time_matlab = self.matlab.get_param(
             f'{self.simulink_file}', 'SimulationTime')
-
         self.matlab.set_param(
             f'{self.simulink_file}/simulation_time_python', 'value',
             str(simulation_time_matlab), nargout=0)
@@ -289,3 +259,10 @@ class BaseBicycleEnv(gym.Env):
         # TODO: throw an error if simulink is not loaded
         # TODO: also throw an error if matlab is no longer active
         return self.matlab.get_param(self.simulink_file, 'SimulationStatus')
+
+    def process_step(self, observations):
+        reward = 0
+        done = False
+        info = {}
+        return (reward, done, info)
+
