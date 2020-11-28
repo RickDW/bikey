@@ -97,14 +97,20 @@ class BicycleEnv(bikey.base.SpacarEnv):
         # define rewards
         self.reward_range = (-inf, inf) #TODO
 
-        # at what point should the episode terminate?
-        self.leaning_limit = 20 * (2 * pi / 360) # radians
+        # limits / at what point should the episode terminate?
+        deg_to_rad = 2 * pi / 360
+        leaning_limit = 20 * deg_to_rad # leaning angle of bicycle
+        steering_limit = 50 * deg_to_rad # steering angle
+        ub_leaning_limit = 30 * deg_to_rad # leaning angle of upper body
+
+        self.limits =
+            np.array([steering_limit, leaning_limit, ub_leaning_limit])
 
     def process_step(self, observations):
         reward = 1
 
-        leaning_angle = abs(observations.flatten()[2])
-        done = leaning_angle > self.leaning_limit
+        angles = abs(observations.flatten()[1:4])
+        done = np.any(angles > self.limits)
 
         info = {}
 

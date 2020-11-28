@@ -150,10 +150,10 @@ class SpacarEnv(gym.Env):
         # self.sym_handle = self.session.load_system(self.model_name) # no GUI
         self.simulink_loaded = True
 
+        self.done = False
+
         # make sure the simulation file is set up correctly
         self.change_settings()
-
-        self.done = False
 
         self.send_sim_command('start')
         # (sim will automatically be paused afte one step by the assert block)
