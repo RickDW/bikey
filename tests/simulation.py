@@ -2,10 +2,12 @@ import gym
 import bikey
 
 import numpy as np
+import os
 
 # TODO: use a testing package?
 
 def setup():
+    bikey.utils.copy_spacar_file(filename = "bicycle.dat")
     env = gym.make(
         "BicycleEnv-v0",
         simulink_file = "simulation_test.slx",

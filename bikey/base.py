@@ -2,6 +2,7 @@ import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
 
 import gym
+import bikey
 import numpy as np
 import os
 import shutil
@@ -13,10 +14,6 @@ import shutil
 # A puzzling aspect of this is that importing matlab.engine in an interpreter
 # session works fine, but as soon as it is run in a script it produces the
 # error.
-
-# figures out where the current file (i.e. base.py) is located
-# this also is the folder where the package is located
-template_dir = os.path.dirname(os.path.realpath(__file__))
 
 # TODO: update all documentation after refactoring
 
@@ -185,7 +182,7 @@ class SpacarEnv(gym.Env):
         """
         Makes a copy of the specified template in this env's working directory.
 
-        If in_template_dir is True, a file located in the template_dir with
+        If in_template_dir is True, a file located in the template dir with
         name template will be searched for. Otherwise template will be
         considered a file path by itself.
 
@@ -193,6 +190,8 @@ class SpacarEnv(gym.Env):
         """
 
         if in_template_dir:
+            template_dir = bikey.utils.find_template_dir()
+
             shutil.copyfile(
                 os.path.join(template_dir, template),
                 os.path.join(self.working_dir, destination))
