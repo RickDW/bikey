@@ -15,7 +15,7 @@ import shutil
 # error.
 
 # figures out where the current file (i.e. base.py) is located
-# this also contains the simulink template file(s)
+# this also is the folder where the package is located
 template_dir = os.path.dirname(os.path.realpath(__file__))
 
 # TODO: update all documentation after refactoring
