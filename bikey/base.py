@@ -22,34 +22,54 @@ template_dir = os.path.dirname(os.path.realpath(__file__))
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
+    "initial_action": np.zeros((3,1)),
+    "spacar_file": "bicycle",
     "output_sbd": False,
     "use_spadraw": False
 }
 
 class SpacarEnv(gym.Env):
-    def __init__(self, action_space, observation_space, simulink_file,
-                 working_dir = os.getcwd(), create_from_template = False,
-                 template = "template.slx", in_template_dir = True,
-                 simulink_config = _default_sim_config, matlab_params =
-                 '-desktop'):
+    def __init__(self, simulink_file, working_dir = os.getcwd(),
+                 create_from_template = False, template = "template.slx",
+                 in_template_dir = True, simulink_config = _default_sim_config,
+                 matlab_params = '-desktop'):
         """
         This environment wraps a general physics simulation running in Spacar.
 
-        # TODO this environment could use a bit more context. Also, a quick
-        # overview of how the synchronization works would be nice.
+        The simulation as seen by Simulink is defined in simulink_file. This
+        file should be located in the specified working_dir, unless
+        create_from_template is True. In that case the file specified by
+        template will be copied into the working_dir with name simulink_file.
+        If in_template_dir is True, the template file will be searched for in
+        bikey's template directory, where some templates are located by
+        default.
+
+        While the simulink_file contains almost everything needed for a
+        general simulation run, there are some settings that will be different
+        for every environment. These options can be specified in
+        simulink_config. The available options can be found in the
+        documentation of SpacarEnv.change_settings().
+
+        Finally, some parameters can be passed to Matlab at startup with
+        matlab_params.
+
+        # TODO a quick overview of how the synchronization works would be nice
 
         Keyword arguments:
         simulink_file -- The name of the simulink file that is used to run the
-            simulation. This should not include the file's .slx extension. This
-            file should be in the current working directory, and cannot be
-            located in a nested directory due to the way the simulation
-            software works.
-        spacar_file -- The name of the spacar file that defines the physical
-            properties of the bicycle. This should not include the file's .dat
-            extension. This file must be in the current working directory, and
-            cannot be located in a nested directory due to the way the
-            simulation software works.
-        matlab_params -- Parameters passed to Matlab during startup.
+            simulation. This should include the file's .slx extension.
+        working_dir -- The working directory for this environment's Matlab
+            session. Any generated output files can be found here.
+        create_from_template -- If True, a file specified by template will be
+            copied. The resulting file's name is simulink_file.
+        template -- The name of the template file to copy. If in_template_dir
+            is True, the file will be searched for in bikey's template
+            directory.
+        in_template_dir --  Specifies whether a template from the template
+            directory should be used.
+        simulink_config -- The specific configuration applied to the
+            simulink_file by SpacarEnv.change_settings().
+        matlab_params -- Parameters passed to Matlab at startup.
         """
 
         super().__init__()
@@ -76,16 +96,12 @@ class SpacarEnv(gym.Env):
         config.update(simulink_config)
         self.simulink_config = config
 
-        # defines which actions and observations are allowed
-        self.action_space = action_space
-        self.observation_space = observation_space
-
         # if simulink_loaded is True, done indicates the end of the episode
         self.done = False
 
     def step(self, actions):
         """
-        Performs one step of the simulation and returns the observations.
+        Performs one step of the simulation and returns output of this step.
 
         Requires Simulink to be loaded. Also requires get_sim_status() ==
         'paused', otherwise this function will not do anything.
@@ -94,7 +110,11 @@ class SpacarEnv(gym.Env):
         actions -- A numpy array, with shape conforming to the action space.
 
         Returns:
-        Observations of the system, as defined by get_observations().
+        A tuple containing:
+        - Observation of the system, as defined by get_observations()
+        - Reward for this time step, a float
+        - A boolean describing whether the end of the episode has been reached
+        - General information for this time step
         """
         if not self.simulink_loaded or self.done:
             return None # TODO: throw an error instead of returning None
@@ -167,7 +187,7 @@ class SpacarEnv(gym.Env):
 
         If in_template_dir is True, a file located in the template_dir with
         name template will be searched for. Otherwise template will be
-        considered a fully specified file path.
+        considered a file path by itself.
 
         If destination already exists it will be replaced.
         """
@@ -183,7 +203,9 @@ class SpacarEnv(gym.Env):
 
     def change_settings(self):
         """
-        Makes some changes to the opened Simulink file.
+        Makes requested changes to the opened Simulink file.
+
+        Requires the Simulink file to be loaded.
         """
         conf = self.simulink_config
 
@@ -231,7 +253,7 @@ class SpacarEnv(gym.Env):
         Stop the Simulink simulation, close Simulink, and clean the workspace.
 
         Should only be called if env.simulink_loaded is True, i.e. anytime after
-        a env.reset(), but not after env.close() or env.close_simulink().
+        an env.reset(), but not after env.close() or env.close_simulink().
         However this will only display a warning message if this is ignored.
         """
         # simulink cannot be closed while simulation is running, so stop it
@@ -257,7 +279,8 @@ class SpacarEnv(gym.Env):
         Updates block contents in the Simulink simulation.
 
         This function tells Simulink which actions are performed in the next
-        step, as well as the simulation time from Python's perspective.
+        step, as well as the simulation time from Python's perspective. This
+        last step is crucial, since it keeps Python and Simulink synchronized.
 
         Arguments:
         actions -- A numpy array with shape conforming to the action space.
@@ -316,6 +339,19 @@ class SpacarEnv(gym.Env):
         return self.session.get_param(self.model_name, 'SimulationStatus')
 
     def process_step(self, observations):
+        """
+        Placeholder function to be overwritten by subclass.
+
+        This function defines the rewards, when to end an episode, and what
+        general info is given out at every time step.
+
+        Arguments:
+        observations -- Observations of the current time step, as defined by
+            get_observations()
+
+        Returns:
+        A tuple structured the same way the output of step() is.
+        """
         reward = 0
         done = False
         info = {}

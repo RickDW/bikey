@@ -27,11 +27,10 @@ pip install -e .
 
 ## Usage
 The two main components of this package are the SpacarEnv and BicycleEnv
-classes. The first class can technically be used as a RL environment, but it's
-behaviour is not very useful without subclassing it. Therefore it is not
-registered as an environment.
+classes. SpacarEnv is not a full gym environment, therefore only BicycleEnv
+is registered as an environment.
 
-To create an environment, first import the bikey package. This will
+To create an environment instance, first import the bikey package. This will
 automatically register the bicycle environment, which allows gym.make to
 create an environment with the specified options.
 
@@ -46,11 +45,27 @@ env = gym.make("BicycleEnv-v0")
 
 env_with_options = gym.make(
     "BicycleEnv-v0",
-    "simulink_file"="model.slx",
-    "working_dir"="path/to/directory",
-    "simulink_config"={
+    simulink_file="model.slx",
+    working_dir="path/to/directory",
+    simulink_config={
         ...
     }
     ... # consult the documentation of BicycleEnv for more options
 )
 ```
+
+## More custom Spacar environments
+This package makes creating your own Spacar environments as easy as possible.
+All you need to do is to subclass bikey.base.SpacarEnv and override the
+process_step() function with your own logic. This function defines the
+the rules of the environment: how to determine rewards, when to end an episode,
+and additionally some general info that can be useful when debugging your code.
+
+The basic template has a very simple Simulink model: actions are provided to
+Spacar, and outputs are read out to the environment. If you need to customize
+this feel free to do so, but make sure there is a constant block with name
+'actions', and a block that saves the last, and only the last, observation
+to 'out.observations' in the Matlab workspace.
+
+Along with all of the settings available when instantiating an environment
+this should give you plenty of room to create any setup you want.

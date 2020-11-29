@@ -8,23 +8,24 @@ import os
 # Newton-meters
 
 maxonEC90 = {
-    "stallTorque": 4.940,
-    "nominalTorque": 0.44,
-    "limitedTorque": 0.4
+    "stall_torque": 4.940,
+    "nominal_torque": 0.44,
+    "limited_torque": 0.4
 }
 
 maxonF2140 = {
-    "stallTorque": 0.031,
-    "nominalTorque": 0.012,
-    "limitedTorque": 0.01
+    "stall_torque": 0.031,
+    "nominal_torque": 0.012,
+    "limited_torque": 0.01
 }
 
 transmission_ratios = {
     "steering": 30,
-    "bodyLeaning": 1,
+    "body_leaning": 1,
     "propulsion": 1
 }
 
+# only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
     "initial_action": np.zeros((3,1)),
     "spacar_file": "bicycle",
@@ -40,28 +41,22 @@ class BicycleEnv(bikey.base.SpacarEnv):
         """
         This environment wraps the physics simulation of a scaled down bicycle.
 
-        Keyword arguments:
-        simulink_file -- The name of the simulink file that is used to run the
-            simulation. This should not include the file's .slx extension. This
-            file should be in the current working directory, and cannot be
-            located in a nested directory due to the way the simulation
-            software works.
-        spacar_file -- The name of the spacar file that defines the physical
-            properties of the bicycle. This should not include the file's .dat
-            extension. This file must be in the current working directory, and
-            cannot be located in a nested directory due to the way the
-            simulation software works.
-        matlab_params -- Parameters passed to Matlab during startup.
+        The arguments are equal to those of base.SpacarEnv.__init__, consult its
+        documentation instead.
+
+        Arguments:
+        Arguments are equal to those of base.SpacarEnv.__init__, consult its
+            documentation instead.
         """
 
         # define actions
 
         torque_limit_propulsion = \
-            maxonEC90["limitedTorque"] * transmission_ratios["propulsion"]
+            maxonEC90["limited_torque"] * transmission_ratios["propulsion"]
         torque_limit_steering = \
-            maxonEC90["limitedTorque"] * transmission_ratios["steering"]
+            maxonEC90["limited_torque"] * transmission_ratios["steering"]
         torque_limit_leaning = \
-            maxonF2140["limitedTorque"] * transmission_ratios["bodyLeaning"]
+            maxonF2140["limited_torque"] * transmission_ratios["body_leaning"]
 
         torque_limits = np.array([
             [torque_limit_steering],
@@ -90,12 +85,14 @@ class BicycleEnv(bikey.base.SpacarEnv):
         config = _default_sim_config.copy()
         config.update(simulink_config)
 
-        super().__init__(action_space, observation_space, simulink_file,
-                         working_dir, create_from_template, template,
-                         in_template_dir, config, matlab_params)
+        self.action_space = action_space
+        self.observation_space = observation_space
 
         # define rewards
-        self.reward_range = (-inf, inf) #TODO
+        # TODO: self.reward_range = (-inf, inf)
+
+        super().__init__(simulink_file, working_dir, create_from_template,
+                         template, in_template_dir, config, matlab_params)
 
         # limits / at what point should the episode terminate?
         deg_to_rad = 2 * pi / 360
@@ -107,6 +104,20 @@ class BicycleEnv(bikey.base.SpacarEnv):
             np.array([steering_limit, leaning_limit, ub_leaning_limit])
 
     def process_step(self, observations):
+        """
+        Defines the rewards and episode termination rules.
+
+        The episode continues as long as the upper body, handlebars, and the
+        bicycle stray to far from configurations that are considered normal
+        when a human being cycles in a straight line.
+
+        Arguments:
+        observations -- The observations of the current time step, defined by
+            get_observations()
+
+        Returns:
+        A tuple. The same structure that is expected from SpacarEnv.step()
+        """
         reward = 1
 
         angles = abs(observations.flatten()[1:4])
