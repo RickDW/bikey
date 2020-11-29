@@ -1,4 +1,4 @@
-# Python package for simulated control of a robot bicycle
+# Python package for simulation-based reinforcement learning environments.
 
 This package contains custom OpenAI Gym environments that can interface with a
 [Spacar](http://spacar.nl/spacar) simulation. Spacar is a software package for
