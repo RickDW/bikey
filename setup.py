@@ -4,10 +4,10 @@ with open("README.md", "r") as readme:
     long_description = readme.read()
 
 setuptools.setup(
-    name = "bikey-testing",
-    version = "0.1",
+    name = "bikey-spacar-simulation",
+    version = "0.2",
     author = "Rick de Wolf",
-    description = "Provides an OpenAI Gym environment for a bicycle robot",
+    description = "Provides OpenAI Gym environments for interfacing with Spacar simulations",
     long_description = long_description,
     long_description_content_type = "text/markdown",
     packages = setuptools.find_packages(),

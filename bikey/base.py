@@ -1,8 +1,10 @@
-from math import inf, pi
-import numpy as np
-import gym
 import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
+
+import gym
+import numpy as np
+import os
+import shutil
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's
@@ -12,112 +14,94 @@ import matlab.engine
 # session works fine, but as soon as it is run in a script it produces the
 # error.
 
-WORKING_DIR = "C:/Users/Rick/Museum/bikey/bikey"
-# WORKING_DIR = "~/Museum/bikey/bikey"
+# figures out where the current file (i.e. base.py) is located
+# this also is the folder where the package is located
+template_dir = os.path.dirname(os.path.realpath(__file__))
 
-# Properties of the motors/servos used in the bicycle robot, torques in
-# newton-meters
+# TODO: update all documentation after refactoring
 
-maxonEC90 = {
-    "stallTorque": 4.940,
-    "nominalTorque": 0.44,
-    "limitedTorque": 0.4
+# only settings supported by SpacarEnv.change_settings will have an effect
+_default_sim_config = {
+    "initial_action": np.zeros((3,1)),
+    "spacar_file": "bicycle",
+    "output_sbd": False,
+    "use_spadraw": False
 }
 
-maxonF2140 = {
-    "stallTorque": 0.031,
-    "nominalTorque": 0.012,
-    "limitedTorque": 0.01
-}
-
-transmission_ratios = {
-    "steering": 30,
-    "bodyLeaning": 1,
-    "propulsion": 1
-}
-
-class BaseBicycleEnv(gym.Env):
-    metadata = {'render.modes': []}
-
-    def __init__(self, simulink_file='bicycle', spacar_file='bicycle',
-                 matlab_params=''):
+class SpacarEnv(gym.Env):
+    def __init__(self, simulink_file, working_dir = os.getcwd(),
+                 create_from_template = False, template = "template.slx",
+                 in_template_dir = True, simulink_config = _default_sim_config,
+                 matlab_params = '-desktop'):
         """
-        This environment wraps a physics simulation of a scaled down bicycle.
+        This environment wraps a general physics simulation running in Spacar.
+
+        The simulation as seen by Simulink is defined in simulink_file. This
+        file should be located in the specified working_dir, unless
+        create_from_template is True. In that case the file specified by
+        template will be copied into the working_dir with name simulink_file.
+        If in_template_dir is True, the template file will be searched for in
+        bikey's template directory, where some templates are located by
+        default.
+
+        While the simulink_file contains almost everything needed for a
+        general simulation run, there are some settings that will be different
+        for every environment. These options can be specified in
+        simulink_config. The available options can be found in the
+        documentation of SpacarEnv.change_settings().
+
+        Finally, some parameters can be passed to Matlab at startup with
+        matlab_params.
+
+        # TODO a quick overview of how the synchronization works would be nice
 
         Keyword arguments:
         simulink_file -- The name of the simulink file that is used to run the
-            simulation. This should not include the file's .slx extension. This
-            file should be in the current working directory, and cannot be
-            located in a nested directory due to the way the simulation
-            software works.
-        spacar_file -- The name of the spacar file that defines the physical
-            properties of the bicycle. This should not include the file's .dat
-            extension. This file must be in the current working directory, and
-            cannot be located in a nested directory due to the way the
-            simulation software works.
-        matlab_params -- Parameters passed to Matlab during startup.
+            simulation. This should include the file's .slx extension.
+        working_dir -- The working directory for this environment's Matlab
+            session. Any generated output files can be found here.
+        create_from_template -- If True, a file specified by template will be
+            copied. The resulting file's name is simulink_file.
+        template -- The name of the template file to copy. If in_template_dir
+            is True, the file will be searched for in bikey's template
+            directory.
+        in_template_dir --  Specifies whether a template from the template
+            directory should be used.
+        simulink_config -- The specific configuration applied to the
+            simulink_file by SpacarEnv.change_settings().
+        matlab_params -- Parameters passed to Matlab at startup.
         """
+
         super().__init__()
 
+        # TODO: check whether specified .slx and .dat files exist
         # TODO: catch all potential errors caused by simulink simulation not
         # yet being available
-
-        # TODO: create a general Simulink simulation class that can run
-        # simulations and handle synchronization with Python
-        self.done = False
-        self.leaning_limit = 20 * (2 * pi / 360) # radians
-        self.simulink_loaded = False
-        self.simulink_file = simulink_file
-
         # TODO: having a matlab session for every environment may not be
         # efficient
 
-        # TODO: make sure the working directory is set correctly before
-        # starting matlab / check whether specified .slx and .dat files exist
+        self.session = matlab.engine.start_matlab(matlab_params)
 
-        self.matlab = matlab.engine.start_matlab(matlab_params)
-
-        # TODO: automatically find the correct working directory
         # sets the working directory, allows matlab to find correct files
-        self.matlab.cd(WORKING_DIR)
+        self.session.cd(working_dir)
+        self.working_dir = working_dir
 
-        torque_limit_propulsion = \
-            maxonEC90["limitedTorque"] * transmission_ratios["propulsion"]
-        torque_limit_steering = \
-            maxonEC90["limitedTorque"] * transmission_ratios["steering"]
-        torque_limit_leaning = \
-            maxonF2140["limitedTorque"] * transmission_ratios["bodyLeaning"]
+        if create_from_template:
+            self.copy_template(simulink_file, template, in_template_dir)
 
-        torque_limits = np.array([
-            [torque_limit_steering],
-            [torque_limit_leaning],
-            [torque_limit_propulsion]],
-            dtype = np.float32)
+        self.simulink_loaded = False
+        self.model_name = simulink_file[:-4] # remove the .slx extension
 
-        #define actions
-        self.action_space = gym.spaces.Box(
-                low = -torque_limits,
-                high = torque_limits,
-                shape = (3, 1),
-                dtype = np.float32)
+        config = _default_sim_config.copy()
+        config.update(simulink_config)
+        self.simulink_config = config
 
-        infinity = np.array([[inf], [inf], [inf], [inf], [inf], [inf]],
-                            dtype = np.float32)
-
-        # define observations
-        # TODO: give a better description of the observations?
-        self.observation_space = gym.spaces.Box(
-                low = -infinity,
-                high = infinity,
-                shape = (6, 1),
-                dtype = np.float32)
-
-        # define rewards
-        self.reward_range = (-inf, inf) #TODO
+        # if simulink_loaded is True, done indicates the end of the episode
+        self.done = False
 
     def step(self, actions):
         """
-        Performs one step of the simulation and returns the observations.
+        Performs one step of the simulation and returns output of this step.
 
         Requires Simulink to be loaded. Also requires get_sim_status() ==
         'paused', otherwise this function will not do anything.
@@ -126,7 +110,11 @@ class BaseBicycleEnv(gym.Env):
         actions -- A numpy array, with shape conforming to the action space.
 
         Returns:
-        Observations of the system, as defined by get_observations().
+        A tuple containing:
+        - Observation of the system, as defined by get_observations()
+        - Reward for this time step, a float
+        - A boolean describing whether the end of the episode has been reached
+        - General information for this time step
         """
         if not self.simulink_loaded or self.done:
             return None # TODO: throw an error instead of returning None
@@ -139,23 +127,28 @@ class BaseBicycleEnv(gym.Env):
             self.update_matlab(actions)
             self.send_sim_command('continue')
 
-            observations = self.get_observations()
-            info = {}
-            reward = 1 # 1 point for every step, as long as you can keep riding
-
-            if self.get_sim_status() == 'stopped':
-                info["simulationStopped"] = True
-                self.done = True
-                self.send_sim_command('stop')
-
-            leaning_angle = abs(observations[2])
-            if leaning_angle > self.leaning_limit:
-                info["largeLeanAngle"] = True
-                self.done = True
-                self.send_sim_command('stop')
-
             # TODO make sure the simulation is paused/stopped/whatever before
             # reading out the new observations
+            observations = self.get_observations()
+
+            # subclasses can easily implement their own behaviour here
+            reward, done, info = self.process_step(observations)
+            eer = "episode_end_reason"
+
+            if self.get_sim_status() == 'stopped':
+                info[eer] = "end_of_sim"
+                self.done = True
+
+            # allow subclasses to implement their own logic here
+            if done:
+                if eer in info:
+                    info[eer] += "/end_of_epi"
+                else:
+                    info[eer] = "end_of_epi"
+
+                self.done = True
+                self.send_sim_command('stop')
+
             return (observations, reward, self.done, info)
 
     def reset(self):
@@ -172,25 +165,78 @@ class BaseBicycleEnv(gym.Env):
             self.close_simulink()
 
         # TODO: make simulink GUI an option of the environment
-        self.matlab.open_system(self.simulink_file, nargout=0) # show simulink GUI
-        # self.sym_handle = self.matlab.load_system(self.simulink_file) # no GUI
-
+        # open the simulink model
+        self.session.open_system(self.model_name, nargout=0)
+        # self.sym_handle = self.session.load_system(self.model_name) # no GUI
         self.simulink_loaded = True
+
         self.done = False
+
+        # make sure the simulation file is set up correctly
+        self.change_settings()
 
         self.send_sim_command('start')
         # (sim will automatically be paused afte one step by the assert block)
 
         return self.get_observations()
 
-    def render(self, mode='human'):
+    def copy_template(self, destination, template = "template.slx",
+                      in_template_dir = True):
         """
-        Render the environment. Not supported for this environment.
+        Makes a copy of the specified template in this env's working directory.
 
-        Arguments:
-        mode -- The type of render action to perform.
+        If in_template_dir is True, a file located in the template_dir with
+        name template will be searched for. Otherwise template will be
+        considered a file path by itself.
+
+        If destination already exists it will be replaced.
         """
-        super().render(mode=mode) # raise an exception
+
+        if in_template_dir:
+            shutil.copyfile(
+                os.path.join(template_dir, template),
+                os.path.join(self.working_dir, destination))
+
+        else:
+            shutil.copyfile(
+                template, os.path.join(self.working_dir, destination))
+
+    def change_settings(self):
+        """
+        Makes requested changes to the opened Simulink file.
+
+        Requires the Simulink file to be loaded.
+        """
+        conf = self.simulink_config
+
+        if "initial_action" in conf:
+            # set the action that is performed once when the env is reset
+            str_repr = str(conf["initial_action"].flatten())
+            self.session.set_param(
+                f"{self.model_name}/actions", 'value', str_repr, nargout = 0)
+
+        if "spacar_file" in conf:
+            # point spacar towards the correct model definition
+            spacar_file = conf["spacar_file"]
+            self.session.set_param(
+                f"{self.model_name}/spacar", 'filename', f"'{spacar_file}'",
+                nargout = 0)
+
+        convert = lambda boolean: 'on' if boolean else 'off'
+
+        if "output_sbd" in conf:
+            output_sbd = conf["output_sbd"]
+            # turn on/off .sbd output (used for making movies of episodes)
+            self.session.set_param(
+                f"{self.model_name}/spacar", "output_sbd",
+                convert(output_sbd), nargout = 0)
+
+        if "use_spadraw" in conf:
+            use_spadraw = conf["use_spadraw"]
+            # turn on/off visualization during episodes
+            self.session.set_param(
+                f"{self.model_name}/spacar", "use_spadraw",
+                convert(use_spadraw), nargout = 0)
 
     def close(self):
         """
@@ -200,30 +246,30 @@ class BaseBicycleEnv(gym.Env):
             self.close_simulink()
 
         # close matlab
-        self.matlab.quit()
+        self.session.quit()
 
     def close_simulink(self):
         """
-        Stop the Simulink simulation, close Simulink, and clean workspace.
+        Stop the Simulink simulation, close Simulink, and clean the workspace.
 
         Should only be called if env.simulink_loaded is True, i.e. anytime after
-        a env.reset(), but not after env.close() or env.close_simulink(). will
-        only display a warning message if this is ignored.
+        an env.reset(), but not after env.close() or env.close_simulink().
+        However this will only display a warning message if this is ignored.
         """
         # simulink cannot be closed while simulation is running, so stop it
         self.send_sim_command('stop')
 
-        # close simulink
-        self.matlab.eval(f"close_system(bdroot, 0)", nargout=0)
+        # close simulink and do not save changes
+        self.session.eval(f"close_system(bdroot, 0)", nargout=0)
         # TODO: figure out what is going on here:
         # can't use the command below since matlab seems to think 0 is a filenme
-        # self.matlab.eval(f"close_system({self.simulink_file}, 0), nargout=0)
+        # self.session.eval(f"close_system({self.model_name}, 0), nargout=0)
         # gives matlab.engine.MatlabExecutionError: Invalid Simulink object handle
-        # self.matlab.close_system(self.simulink_file, 0, nargout=0)
+        # self.session.close_system(self.model_name, 0, nargout=0)
         # gives another error
 
         # remove observations stored in the workspace (variable 'out')
-        self.matlab.clear('out', nargout=0)
+        self.session.clear('out', nargout=0)
 
         # register simulink no longer being available
         self.simulink_loaded = False
@@ -233,20 +279,22 @@ class BaseBicycleEnv(gym.Env):
         Updates block contents in the Simulink simulation.
 
         This function tells Simulink which actions are performed in the next
-        step, as well as the simulation time from Python's perspective.
+        step, as well as the simulation time from Python's perspective. This
+        last step is crucial, since it keeps Python and Simulink synchronized.
 
         Arguments:
         actions -- A numpy array with shape conforming to the action space.
         """
         string_repr = str(actions.flatten())
-        self.matlab.set_param(
-            f'{self.simulink_file}/actions', 'value', string_repr, nargout=0)
+        self.session.set_param(
+            f'{self.model_name}/actions', 'value', string_repr, nargout=0)
 
-        simulation_time_matlab = self.matlab.get_param(
-            f'{self.simulink_file}', 'SimulationTime')
-
-        self.matlab.set_param(
-            f'{self.simulink_file}/simulation_time_python', 'value',
+        # TODO remove this part of the synchronization mechanism, seems
+        # redundant
+        simulation_time_matlab = self.session.get_param(
+            self.model_name, 'SimulationTime')
+        self.session.set_param(
+            f'{self.model_name}/simulation_time_python', 'value',
             str(simulation_time_matlab), nargout=0)
 
     def send_sim_command(self, command):
@@ -259,8 +307,8 @@ class BaseBicycleEnv(gym.Env):
             'start', 'pause', 'continue', 'stop', and 'update'.
         """
         if self.simulink_loaded:
-            self.matlab.set_param(
-                self.simulink_file, 'SimulationCommand', command, nargout=0)
+            self.session.set_param(
+                self.model_name, 'SimulationCommand', command, nargout=0)
 
     def get_observations(self):
         """
@@ -272,8 +320,8 @@ class BaseBicycleEnv(gym.Env):
         A numpy array with shape conforming to the defined observation space,
         or None if the simulation has not been started.
         """
-        if self.matlab.exist('out'):
-            return np.array(self.matlab.eval('out.observations')).T
+        if self.session.exist('out'):
+            return np.array(self.session.eval('out.observations')).T
         else:
             return None
 
@@ -288,4 +336,23 @@ class BaseBicycleEnv(gym.Env):
         """
         # TODO: throw an error if simulink is not loaded
         # TODO: also throw an error if matlab is no longer active
-        return self.matlab.get_param(self.simulink_file, 'SimulationStatus')
+        return self.session.get_param(self.model_name, 'SimulationStatus')
+
+    def process_step(self, observations):
+        """
+        Placeholder function to be overwritten by subclass.
+
+        This function defines the rewards, when to end an episode, and what
+        general info is given out at every time step.
+
+        Arguments:
+        observations -- Observations of the current time step, as defined by
+            get_observations()
+
+        Returns:
+        A tuple structured the same way the output of step() is.
+        """
+        reward = 0
+        done = False
+        info = {}
+        return (reward, done, info)
