@@ -63,55 +63,53 @@ def handle_client(client_socket):
 
     process.start()
 
-    with client_socket:
-        while True:
-            print('Waiting for a new message')
-            data = client_socket.recv(1024)
-            if not data:
-                message_queue.put({'command': 'close'})
-                response = response_queue.get()
+    try:
+        with client_socket:
+            while True:
+                print('Waiting for a new message')
 
-                if response is not None:
-                    # TODO this should not happen at all
-                    print('Requested end of env process.')
-                    print('Did not get sentinel object.')
-                    break
+                data = client_socket.recv(1024)
 
-                break
-            read_buffer += data
-
-            if _delimiter in read_buffer:
-                # a full message has been received, put it in the queue
-                raw_message, read_buffer = \
-                    read_buffer.split(_delimiter, maxsplit=1)
-                message = json.loads(raw_message.decode(_encoding))
-                # make sure observations are turned into numpy arrays
-                numpyify(message)
-                print('Received new message: ', message)
-                message_queue.put(message)
-
-                # wait for a response from the process
-                response = response_queue.get()
-
-                print('Received response from process: ', response)
-
-                if response is None:
-                    # process will die
-                    # this breaks out of the loop, closing the client socket
-                    # the process.join() shouldn't block since it's dead
-                    # and then the thread will die too, freeing up a connection
-
-                    # tell the process to close its environment
+                if not data:
+                    # connection is broken, shutdown everything
                     message_queue.put({'command': 'close'})
                     break
 
-                # make sure observations are turned into lists before being
-                # turned into json
-                denumpyify(response)
-                client_socket.sendall(
-                    json.dumps(response).encode(_encoding) + _delimiter)
+                read_buffer += data
 
-                print('Sent process response to client')
+                if _delimiter in read_buffer:
+                    # a full message has been received, put it in the queue
+                    raw_message, read_buffer = \
+                        read_buffer.split(_delimiter, maxsplit=1)
+                    message = json.loads(raw_message.decode(_encoding))
+                    # make sure observations are turned into numpy arrays
+                    numpyify(message)
+                    print('Received new message: ', message)
+                    message_queue.put(message)
+
+                    # wait for a response from the process
+                    response = response_queue.get()
+
+                    print('Received response from process: ', response)
+
+                    if response is None:
+                        # process will die
+                        # break out of the loop, this will close the client socket
+                        # process.join() shouldn't block since it's dead
+                        # and then the thread will die too, freeing up a connection
+                        break
+
+                    # make sure observations are turned into lists before being
+                    # turned into json
+                    denumpyify(response)
+                    client_socket.sendall(
+                        json.dumps(response).encode(_encoding) + _delimiter)
+
+                    print('Sent process response to client')
+
+    except ConnectionResetError:
+        print("The connection with the client was broken, killing thread and process")
+        message_queue.put({'command': 'close'})
 
     print("End of thread")
     process.join()
