@@ -10,10 +10,12 @@ from time import sleep
 
 _delimiter = b'<END>'
 _encoding = 'utf-8'
-max_connections = 10
 
 HOST = "127.0.0.1"
 PORT = 65432
+max_connections = 10
+
+server_dir = 'C:\\Users\\Rick\\Museum\\bikey\\tests' # restricted access
 
 
 def start_server(host, port):
@@ -144,6 +146,14 @@ def run_environment(message_queue, response_queue):
                 continue
 
             data = message['data']
+
+            if data['env'] == 'BicycleEnv-v0':
+                if 'config' in data and 'working_dir' in data['config']:
+                    # set working dir to the one that's allowed on the server
+                    # TODO: maybe add a check whether the specified dir is a
+                    # subdirectory of a server dir?
+                    data['config']['working_dir'] = server_dir
+
             env = gym.make(data['env'], **data['config'])
             initialized = True
             print("Initialized environment")
