@@ -3,24 +3,38 @@ import socket
 import json
 import numpy as np
 
+from . import server
+
 
 class NetworkEnv(gym.Env):
-    _delimitter = '<END>'
-    _encoding = 'utf-8'
-    _readbuffer = b''
+    _delimiter = server._delimiter
+    _encoding = server._encoding
+    _read_buffer = b''
+    _commands = ['init', 'reset', 'step']
 
-    def __init__(self, address, port, env_name, **env_options):
+    def __init__(self, address, port, env_name, **env_config):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(address, port)
+        self.socket.connect((address, port))
 
-        self.send_command('init', {'env': env_name, 'options': env_options})
+        print('Connected to server, sending command')
+
+        self.send_command('init', {'env': env_name, 'config': env_config})
+
+        print('Sent init command, waiting for response')
 
         response = self.receive_command()
+        print("Response received: ", response)
         if response['command'] != 'confirm':
             # TODO something went wrong!
             pass
 
+        print("NetworkEnv initiated")
+
     def send_command(self, command, data = None):
+        if command not in self._commands:
+            # TODO unsupported command, raise an error
+            return
+
         if data is not None:
             message = {
                 'command': command,
@@ -32,19 +46,23 @@ class NetworkEnv(gym.Env):
             }
 
         self.socket.sendall(json.dumps(message).encode(self._encoding) \
-                            + self._delimitter)
+                            + self._delimiter)
 
     def receive_command(self):
-        while self._delimitter not in self._readbuffer:
+        while self._delimiter not in self._read_buffer:
+            print("Read buffer: ", self._read_buffer.decode(self._encoding))
             data = self.socket.recv(1024)
+            print("Data received")
             if not data:
-                break # TODO connection is broken, close it on this side as well
-            self._readbuffer += data
+                self.close()
+                return
+                # TODO connection is broken, close it on this side as well
+            self._read_buffer += data
 
-        response, self._readbuffer = \
-            self._readbuffer.split(self._delimitter, max_splits = 1)
+        response, self._read_buffer = \
+            self._read_buffer.split(self._delimiter, maxsplit=1)
 
-        return response.decode('utf-8')
+        return json.loads(response.decode('utf-8'))
 
     def reset(self):
         self.send_command('reset')
@@ -70,6 +88,7 @@ class NetworkEnv(gym.Env):
             info = data['info']
 
         else:
+            pass
             # TODO something went wrong
 
         return observation, reward, done, info
