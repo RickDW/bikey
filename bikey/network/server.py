@@ -19,6 +19,18 @@ server_dir = 'C:\\Users\\Rick\\Museum\\bikey\\tests' # restricted access
 
 
 def start_server(host, port):
+    """
+    Start an environment server on the specified interface and port.
+
+    As long as the number of connections is below the max_connections limit,
+    any incoming connections will be given their own thread. These threads in
+    turn will spawn a process that will run the environment. This way any
+    CPU-bound computations do not block the server's connections.
+
+    Arguments:
+    host -- The interface to listen on
+    port -- The port to listen on
+    """
     thread_list = []
     connection_count = 0
 
@@ -54,6 +66,12 @@ def start_server(host, port):
 
 
 def handle_client(client_socket):
+    """
+    Handles all communications with clients of the server in its own thread.
+
+    Arguments:
+    client_socket -- The socket associated with the connection.
+    """
     print('Created a new thread')
     read_buffer = b''
 
@@ -119,18 +137,46 @@ def handle_client(client_socket):
 
 
 def numpyify(message):
+    """
+    Transforms specified 'action' into a numpy array.
+
+    At this point the numpy array is stored in its .tolist() form.
+
+    Arguments:
+    message -- The message stored in a python dictionary
+    """
     if 'data' in message and 'action' in message['data']:
         message['data']['action'] = \
             np.array(message['data']['action'])
 
 
 def denumpyify(message):
+    """
+    Transforms 'observation' numpy array into list form.
+
+    Replaces the 'observation' with its array.tolist() form.
+
+    Arguments:
+    message -- The message stored in a python dictionary
+    """
     if 'data' in message and 'observation' in message['data']:
         message['data']['observation'] = \
             message['data']['observation'].tolist()
 
 
 def run_environment(message_queue, response_queue):
+    """
+    Makes requested calls to an environment.
+
+    The code in this function will always run in its own process, so CPU-bound
+    code does not block the server. Queues are used to communicate with the
+    server.
+
+    Arguments:
+    message_queue -- Any requests will come in through this queue
+    response_queue -- Once a request is done, a confirmation needs to be put in
+        this queue.
+    """
     print("Initialized new process")
     initialized = False
     reset = False
