@@ -54,6 +54,20 @@ env_with_options = gym.make(
 )
 ```
 
+## Networked environments
+The project for which this package is designed has a need for remote execution
+of environments, meaning the environment can be controlled on one computer
+while it runs on another that is reachable over a network. This will add some
+latency and may make your training sessions less efficient.
+
+Warning: currently the code for the NetworkEnv class lacks basics security
+features. I hope to implement some of those in the near future. Pull requests
+are also welcome.
+
+The NetworkEnv class is designed to be reasonably generally applicable, but at
+the moment it assumes the actions and observations of underlying environment
+are numpy arrays.
+
 ## More custom Spacar environments
 This package makes creating your own Spacar environments as easy as possible.
 All you need to do is to subclass bikey.base.SpacarEnv and override the
