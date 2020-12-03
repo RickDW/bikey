@@ -1,5 +1,5 @@
 import gym
-import bikey.base
+import bikey
 from math import inf, pi
 import numpy as np
 import os
