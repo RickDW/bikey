@@ -31,7 +31,7 @@ def start_server(host, port):
     host -- The interface to listen on
     port -- The port to listen on
     """
-    thread_list = []
+    threads = []
     connection_count = 0
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -39,6 +39,19 @@ def start_server(host, port):
         s.listen()
 
         while True:
+            threads = [(a, t) for a, t in threads if t.is_alive()]
+            connection_count = len(threads)
+
+            # display all connections
+            print('\n' + '-' * 40)
+            if len(threads) > 0:
+                print("Current connections:")
+                for i, (address, thread) in enumerate(threads):
+                    print(f"Connection {i} :: address {address}")
+            else:
+                print("Currently not connected to any clients")
+            print('\n' + '-' * 40 + '\n')
+
             if connection_count <= max_connections:
                 print("Waiting for new connection")
                 client_socket, addr = s.accept()
@@ -46,20 +59,16 @@ def start_server(host, port):
                 print("Incoming connection from: ", addr)
                 thread = threading.Thread(target = handle_client,
                                           args = (client_socket,))
-                thread_list.append(thread)
+                threads.append((addr, thread))
                 thread.start()
                 connection_count += 1
 
             else:
-                thread_list = [t for t in thread_list if t.is_alive()]
-                connection_count = len(thread_list)
-                if connection_count <= max_connections:
-                    continue  # new connections are welcome
-                else:
-                    print('Waiting 30 seconds before checking available slots again')
-                    sleep(30) # wait half a minute before checking again
+                print('Server full')
+                print('Waiting 30 seconds before checking available slots again')
+                sleep(30) # wait half a minute before checking again
 
-    for thread in thread_list:
+    for address, thread in threads:
         thread.join()
 
     print("Environment server has shutdown.")
