@@ -2,7 +2,7 @@ import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
 
 import gym
-import bikey
+import bikey.utils
 import numpy as np
 import os
 import shutil

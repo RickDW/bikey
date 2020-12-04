@@ -1,5 +1,5 @@
 import gym
-import bikey
+from bikey.spacar import SpacarEnv
 from math import inf, pi
 import numpy as np
 import os
@@ -33,7 +33,7 @@ _default_sim_config = {
     "use_spadraw": False
 }
 
-class BicycleEnv(bikey.base.SpacarEnv):
+class BicycleEnv(SpacarEnv):
     def __init__(self, simulink_file, working_dir = os.getcwd(),
                  create_from_template = False, template = "bicycle_template.slx",
                  in_template_dir = True, simulink_config =
@@ -126,3 +126,8 @@ class BicycleEnv(bikey.base.SpacarEnv):
         info = {}
 
         return (reward, done, info)
+
+gym.envs.register(
+    id = "BicycleEnv-v0",
+    entry_point = "bikey.bicycle:BicycleEnv"
+)

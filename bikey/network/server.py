@@ -1,5 +1,5 @@
 import gym
-import bikey
+import bikey.bicycle  # registers the env with gym
 import numpy as np
 import socket
 import json

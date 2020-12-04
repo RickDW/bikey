@@ -3,8 +3,6 @@ import socket
 import json
 import numpy as np
 
-from . import server
-
 
 class NetworkEnv(gym.Env):
     """
@@ -26,8 +24,8 @@ class NetworkEnv(gym.Env):
     actions and observations are expected to be numpy arrays, this may change
     in a future version.
     """
-    _delimiter = server._delimiter
-    _encoding = server._encoding
+    _delimiter = b'<END>'
+    _encoding = 'utf-8'
     _read_buffer = b''
 
     def __init__(self, address, port, env_name, **env_config):
@@ -157,3 +155,8 @@ class NetworkEnv(gym.Env):
             self._read_buffer.split(self._delimiter, maxsplit=1)
 
         return json.loads(response.decode('utf-8'))
+
+gym.envs.register(
+    id = "NetworkEnv-v0",
+    entry_point = "bikey.network.network_env:NetworkEnv"
+)
