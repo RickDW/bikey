@@ -6,6 +6,8 @@ import json
 import multiprocessing as mp
 import threading
 from time import sleep
+import datetime
+import os
 
 
 _delimiter = b'<END>'
@@ -14,11 +16,10 @@ _encoding = 'utf-8'
 HOST = "127.0.0.1"
 PORT = 65432
 max_connections = 10
+server_dir = os.getcwd()
 
-server_dir = 'C:\\Users\\Rick\\Museum\\bikey\\tests' # restricted access
 
-
-def start_server(host, port):
+def start_server(host, port, server_dir):
     """
     Start an environment server on the specified interface and port.
 
@@ -33,6 +34,8 @@ def start_server(host, port):
     """
     threads = []
     connection_count = 0
+
+    dir_thread, stop_event, name_queue = setup_name_queue(server_dir)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
@@ -58,7 +61,7 @@ def start_server(host, port):
 
                 print("Incoming connection from: ", addr)
                 thread = threading.Thread(target = handle_client,
-                                          args = (client_socket,))
+                                          args = (client_socket, name_queue))
                 threads.append((addr, thread))
                 thread.start()
                 connection_count += 1
@@ -68,13 +71,19 @@ def start_server(host, port):
                 print('Waiting 30 seconds before checking available slots again')
                 sleep(30) # wait half a minute before checking again
 
+    # stop the thread that generates working directories
+    stop_event.set()
+
+    dir_thread.join()
+
     for address, thread in threads:
         thread.join()
 
-    print("Environment server has shutdown.")
+    print("Environment server has shutdown")
+    print("All threads or processes are dead")
 
 
-def handle_client(client_socket):
+def handle_client(client_socket, name_queue):
     """
     Handles all communications with clients of the server in its own thread.
 
@@ -88,7 +97,7 @@ def handle_client(client_socket):
     response_queue = mp.Queue()
 
     process = mp.Process(target=run_environment,
-                      args=(message_queue, response_queue))
+                      args=(message_queue, response_queue, name_queue))
 
     process.start()
 
@@ -145,35 +154,7 @@ def handle_client(client_socket):
     print("End of process")
 
 
-def numpyify(message):
-    """
-    Transforms specified 'action' into a numpy array.
-
-    At this point the numpy array is stored in its .tolist() form.
-
-    Arguments:
-    message -- The message stored in a python dictionary
-    """
-    if 'data' in message and 'action' in message['data']:
-        message['data']['action'] = \
-            np.array(message['data']['action'])
-
-
-def denumpyify(message):
-    """
-    Transforms 'observation' numpy array into list form.
-
-    Replaces the 'observation' with its array.tolist() form.
-
-    Arguments:
-    message -- The message stored in a python dictionary
-    """
-    if 'data' in message and 'observation' in message['data']:
-        message['data']['observation'] = \
-            message['data']['observation'].tolist()
-
-
-def run_environment(message_queue, response_queue):
+def run_environment(message_queue, response_queue, name_queue):
     """
     Makes requested calls to an environment.
 
@@ -185,6 +166,8 @@ def run_environment(message_queue, response_queue):
     message_queue -- Any requests will come in through this queue
     response_queue -- Once a request is done, a confirmation needs to be put in
         this queue.
+    name_queue -- A queue that provides working directories to supported
+        environments. Currently only used for BicycleEnv-v0.
     """
     print("Initialized new process")
     initialized = False
@@ -203,11 +186,15 @@ def run_environment(message_queue, response_queue):
             data = message['data']
 
             if data['env'] == 'BicycleEnv-v0':
-                if 'config' in data and 'working_dir' in data['config']:
-                    # set working dir to the one that's allowed on the server
-                    # TODO: maybe add a check whether the specified dir is a
-                    # subdirectory of a server dir?
-                    data['config']['working_dir'] = server_dir
+                # TODO make this env ID check future proof for new versions
+                name = name_queue.get()
+                if 'config' in data:
+                    data['config']['working_dir'] = name
+                else:
+                    data['config'] = {'working_dir': name}
+
+                # only a name has been generated, now create the directory
+                os.makedirs(name)
 
             env = gym.make(data['env'], **data['config'])
             initialized = True
@@ -265,6 +252,88 @@ def run_environment(message_queue, response_queue):
             # do not forget to put an item on the response queue, or the thread
             # will block, and so will everything else
             pass
+
+
+def setup_name_queue(server_dir):
+    """
+    Creates a fixed size queue that will store possible working directories.
+
+    Returns:
+    A three-tuple containing
+    - the thread that generates names of working directories
+    - a threading.Event instance which allows you to stop the working directory
+        generation thread
+    - a multiprocessing.Queue instance from which processes can take a working
+        directory for their environment, if needed
+    """
+    name_queue = mp.Queue(maxsize=5)
+    stop_event = threading.Event()
+
+    thread = threading.Thread(target=provide_names,
+                              args=(server_dir, name_queue, stop_event))
+
+    thread.start()
+
+    return thread, stop_event, name_queue
+
+
+def provide_names(base_dir, queue, stop_event):
+    """
+    Keeps adding names to the queue until stop_event is set.
+
+    The names are formatted as follows:
+    base_dir/hour.minute-day.month.year-0001, with the date and time
+    representing the moment the server started running. This format allows for
+    ten thousand directories per server active server, but this still means
+    it is not a feasible option for running an environment server without
+    stopping.
+
+    The provided queue should have a maximum size, or the thread in which
+    this function is called will keep adding subdirectories forever.
+
+    Arguments:
+    base_dir -- The directory where the working directories will be located
+    queue -- A multiprocessing.Queue instance with a given maximum size
+    stop_event -- The event that tells this function to stop producing names
+    """
+    time_string = datetime.datetime.today().strftime('%H.%M-%d.%m.%Y')
+    base = os.path.join(base_dir, time_string + '-')
+    counter = 1
+
+    while not stop_event.is_set():
+        # keep providing available directory names while thread is alive
+        name = base + f'{counter:04}'
+        queue.put(name)
+        print(f"Put {name} on the queue")
+        counter += 1
+
+
+def numpyify(message):
+    """
+    Transforms specified 'action' into a numpy array.
+
+    At this point the numpy array is stored in its .tolist() form.
+
+    Arguments:
+    message -- The message stored in a python dictionary
+    """
+    if 'data' in message and 'action' in message['data']:
+        message['data']['action'] = \
+            np.array(message['data']['action'])
+
+
+def denumpyify(message):
+    """
+    Transforms 'observation' numpy array into list form.
+
+    Replaces the 'observation' with its array.tolist() form.
+
+    Arguments:
+    message -- The message stored in a python dictionary
+    """
+    if 'data' in message and 'observation' in message['data']:
+        message['data']['observation'] = \
+            message['data']['observation'].tolist()
 
 
 if __name__ == '__main__':
