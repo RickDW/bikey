@@ -90,7 +90,7 @@ def handle_client(client_socket, name_queue):
     Arguments:
     client_socket -- The socket associated with the connection.
     """
-    print('Created a new thread')
+    # print('Created a new thread')
     read_buffer = b''
 
     message_queue = mp.Queue()
@@ -104,7 +104,7 @@ def handle_client(client_socket, name_queue):
     try:
         with client_socket:
             while True:
-                print('Waiting for a new message')
+                # print('Waiting for a new message')
 
                 data = client_socket.recv(1024)
 
@@ -122,13 +122,13 @@ def handle_client(client_socket, name_queue):
                     message = json.loads(raw_message.decode(_encoding))
                     # make sure observations are turned into numpy arrays
                     numpyify(message)
-                    print('Received new message: ', message)
+                    # print('Received new message: ', message)
                     message_queue.put(message)
 
                     # wait for a response from the process
                     response = response_queue.get()
 
-                    print('Received response from process: ', response)
+                    # print('Received response from process: ', response)
 
                     if response is None:
                         # process will die
@@ -143,15 +143,15 @@ def handle_client(client_socket, name_queue):
                     client_socket.sendall(
                         json.dumps(response).encode(_encoding) + _delimiter)
 
-                    print('Sent process response to client')
+                    # print('Sent process response to client')
 
     except ConnectionResetError:
-        print("The connection with the client was broken, killing thread and process")
+        # print("The connection with the client was broken, killing thread and process")
         message_queue.put({'command': 'close'})
 
-    print("End of thread")
+    # print("End of thread")
     process.join()
-    print("End of process")
+    # print("End of process")
 
 
 def run_environment(message_queue, response_queue, name_queue):
@@ -169,7 +169,7 @@ def run_environment(message_queue, response_queue, name_queue):
     name_queue -- A queue that provides working directories to supported
         environments. Currently only used for BicycleEnv-v0.
     """
-    print("Initialized new process")
+    # print("Initialized new process")
     initialized = False
     reset = False
 
@@ -198,7 +198,7 @@ def run_environment(message_queue, response_queue, name_queue):
 
             env = gym.make(data['env'], **data['config'])
             initialized = True
-            print("Initialized environment")
+            # print("Initialized environment")
             response_queue.put({
                 'command': 'confirm'
             })
@@ -211,7 +211,7 @@ def run_environment(message_queue, response_queue, name_queue):
             observation = env.reset()
             reset = True
 
-            print('Reset the environment')
+            # print('Reset the environment')
 
             response_queue.put({
                 'command': 'confirm',
@@ -304,7 +304,7 @@ def provide_names(base_dir, queue, stop_event):
         # keep providing available directory names while thread is alive
         name = base + f'{counter:04}'
         queue.put(name)
-        print(f"Put {name} on the queue")
+        # print(f"Put {name} on the queue")
         counter += 1
 
 
