@@ -42,9 +42,6 @@ class BicycleEnv(SpacarEnv):
         """
         This environment wraps the physics simulation of a scaled down bicycle.
 
-        The arguments are equal to those of base.SpacarEnv.__init__, consult its
-        documentation instead.
-
         Arguments:
         Arguments are equal to those of bikey.base.SpacarEnv.__init__, consult
             its documentation instead.

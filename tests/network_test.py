@@ -1,22 +1,19 @@
 import gym
-import bikey
-from bikey.network.network_env import NetworkEnv
+import bikey.network.network_env
 import numpy as np
 import os
 
 
-def setup():
-    bikey.utils.copy_spacar_file(filename = "bicycle.dat")
-
-    env = NetworkEnv('127.0.0.1', 65432, 'BicycleEnv-v0',
-                     simulink_file='simulation_test.slx',
-                     working_dir=os.getcwd(),
-                     create_from_template=True)
-
-    return env
-
 def main():
-    env = setup()
+    os.chdir('C:\\Users\\rickx\\Museum\\bikey\\tests')
+
+    env = gym.make('Networkenv-v0',
+                   '127.0.0.1', 65432,
+                   'BicycleEnv-v0',
+                   simulink_file = 'simulation_test.slx',
+                   working_dir = os.getcwd(),
+                   copy_simulink = True,
+                   copy_spacar = True)
 
     # input("Press <enter> to start test simulation.")
 

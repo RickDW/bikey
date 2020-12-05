@@ -6,25 +6,15 @@ import os
 
 # TODO: use a testing package?
 
-def setup():
-    bikey.utils.copy_spacar_file(filename = "bicycle.dat")
+def main():
     env = gym.make(
         "BicycleEnv-v0",
-        simulink_file = "simulation_test.slx",
-        create_from_template = True,
-        simulink_config = {"output_sbd": True})
-        # simulink_config = {
-        #     "initial_action": np.array([[0, 0, 0]]).T,
-        #     "spacar_file": "bicycle",
-        #     "output_sbd": False,
-        #     "use_spadraw": False})
+        simulink_file="simulation_test.slx",
+        copy_simulink=True,
+        copy_spacar=True,
+        simulink_config={"output_sbd": True})
 
-    return env
-
-def main():
-    env = setup()
-
-    # input("Press <enter> to start test simulation.")
+    input("Press <enter> to start test simulation.")
 
     obs = env.reset()
 

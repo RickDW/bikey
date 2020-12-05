@@ -33,19 +33,22 @@ class SpacarEnv(gym.Env):
         """
         This environment wraps a general physics simulation running in Spacar.
 
-        The simulation as seen by Simulink is defined in simulink_file. This
-        file should be located in the specified working_dir, unless
-        create_from_template is True. In that case the file specified by
-        template will be copied into the working_dir with name simulink_file.
-        If in_template_dir is True, the template file will be searched for in
-        bikey's template directory, where some templates are located by
-        default.
+        The simulation as seen by Simulink is defined in simulink_file. If
+        template_dir is not None this will be set as the global template
+        directory.
+
+        simulink_file should be located in the working_dir. However, if
+        copy_simulink is True, then it will be copied from the template
+        directory. The copy will overwrite a file by the same name if it
+        exists.
 
         While the simulink_file contains almost everything needed for a
-        general simulation run, there are some settings that will be different
+        simulation to be run, there are some settings that will be different
         for every environment. These options can be specified in
         simulink_config. The available options can be found in the
-        documentation of SpacarEnv.change_settings().
+        documentation of SpacarEnv.change_settings(). One of these options is
+        the spacar_file. With copy_spacar you can copy a spacar model from the
+        template directory, this is done in the same way as copy_simulink.
 
         Finally, some parameters can be passed to Matlab at startup with
         matlab_params.
@@ -57,13 +60,12 @@ class SpacarEnv(gym.Env):
             simulation. This should include the file's .slx extension.
         working_dir -- The working directory for this environment's Matlab
             session. Any generated output files can be found here.
-        create_from_template -- If True, a file specified by template will be
-            copied. The resulting file's name is simulink_file.
-        template -- The name of the template file to copy. If in_template_dir
-            is True, the file will be searched for in bikey's template
-            directory.
-        in_template_dir --  Specifies whether a template from the template
-            directory should be used.
+        template_dir -- If this is set to anything but None the global template
+            directory will be set to this.
+        copy_simulink -- If True this will copy a simulink model from the
+            template directory into the working directory.
+        copy_spacar -- If True this will copy a spacar model from the template
+            directory into the working directory.
         simulink_config -- The specific configuration applied to the
             simulink_file by SpacarEnv.change_settings().
         matlab_params -- Parameters passed to Matlab at startup.
