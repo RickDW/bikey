@@ -39,13 +39,14 @@ def send_shutdown_command(host, port):
 
             if not data:
                 # connection is broken, as expected
-                print("Connection is broken as expected")
+                print("Connection was broken as expected")
 
             else:
-                print("Error: server has sent a message instead of shutting down")
+                print("Error: server has sent a message instead of disconnecting")
 
     except ConnectionRefusedError:
         print("Could not connect to server")
+        return
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -57,9 +58,11 @@ def send_shutdown_command(host, port):
             print("Ding dong ditching the server")
 
     except ConnectionRefusedError:
-        print("Second connection was broken, server must already be shut down")
+        print("Connection could not be established, server must already have \
+              shut down")
+        return
 
-    print("Server should be shut down soon")
+    print("Server should have shut down soon")
 
 
 def main():
