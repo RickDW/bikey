@@ -93,7 +93,7 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
     name_queue - A multiprocessing.Queue object containing designated
         directories for clients
     """
-    print('Created a new thread')
+    # print('Created a new thread')
     read_buffer = b''
 
     message_queue = mp.Queue()
@@ -107,7 +107,7 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
     try:
         with client_socket:
             while not stop_server.is_set():
-                print('Waiting for a new message')
+                # print('Waiting for a new message')
 
                 data = client_socket.recv(1024)
 
@@ -125,19 +125,19 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
                     message = json.loads(raw_message.decode(_encoding))
                     # make sure observations are turned into numpy arrays
                     numpyify(message)
-                    print('Received new message: ', message)
+                    # print('Received new message: ', message)
 
                     message_queue.put(message)
 
                     # wait for a response from the process
                     response = response_queue.get()
 
-                    print('Received response from process: ', response)
+                    # print('Received response from process: ', response)
 
                     if response is None:
-                        # the entire server should be shut down (requested by
-                        # client)
                         if from_server:
+                            # the entire server should be shut down (requested
+                            # by client)
                             print("Request from same machine")
                             stop_server.set()
                             print("Server-wide shutdown initiated")
@@ -150,19 +150,19 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
                     client_socket.sendall(
                         json.dumps(response).encode(_encoding) + _delimiter)
 
-                    print('Sent process response to client')
+                    # print('Sent process response to client')
 
             else:
                 # the stop_server event was set
                 message_queue.put(None)
 
     except ConnectionResetError:
-        print("The connection with the client was broken, killing thread and process")
+        # print("The connection with the client was broken, killing thread and process")
         message_queue.put(None)
 
-    print("End of thread")
+    # print("End of thread")
     env_process.join()
-    print("End of process")
+    # print("End of process")
 
 
 def main():
