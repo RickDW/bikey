@@ -79,6 +79,17 @@ python -m bikey.network.server
 python -m bikey.network.server -h
 ```
 
+To shut down the server the following command should be executed **on the
+machine that started the server**, otherwise it will be ignored:
+
+```
+python -m bikey.network.server_shutdown
+```
+
+This command will not automatically detect address and port of a running
+server: they should be provided to the script. For an overview of the shutdown
+script, run it with the `-h` flag.
+
 ## More custom Spacar environments
 This package makes creating your own Spacar environments as easy as possible.
 All you need to do is to subclass bikey.base.SpacarEnv and override the
