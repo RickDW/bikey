@@ -2,7 +2,7 @@ import ssl # TODO: make this optional on windows? see note below
 import matlab.engine
 
 import gym
-import bikey
+import bikey.utils
 import numpy as np
 import os
 import shutil
@@ -20,32 +20,35 @@ import shutil
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
     "initial_action": np.zeros((3,1)),
-    "spacar_file": "bicycle",
+    "spacar_file": "bicycle.dat",
     "output_sbd": False,
     "use_spadraw": False
 }
 
 class SpacarEnv(gym.Env):
-    def __init__(self, simulink_file, working_dir = os.getcwd(),
-                 create_from_template = False, template = "template.slx",
-                 in_template_dir = True, simulink_config = _default_sim_config,
-                 matlab_params = '-desktop'):
+    def __init__(self, simulink_file, working_dir = os.getcwd(), template_dir =
+                 None, copy_simulink = False, copy_spacar = False,
+                 simulink_config = _default_sim_config, matlab_params =
+                 '-desktop'):
         """
         This environment wraps a general physics simulation running in Spacar.
 
-        The simulation as seen by Simulink is defined in simulink_file. This
-        file should be located in the specified working_dir, unless
-        create_from_template is True. In that case the file specified by
-        template will be copied into the working_dir with name simulink_file.
-        If in_template_dir is True, the template file will be searched for in
-        bikey's template directory, where some templates are located by
-        default.
+        The simulation as seen by Simulink is defined in simulink_file. If
+        template_dir is not None this will be set as the global template
+        directory.
+
+        simulink_file should be located in the working_dir. However, if
+        copy_simulink is True, then it will be copied from the template
+        directory. The copy will overwrite a file by the same name if it
+        exists.
 
         While the simulink_file contains almost everything needed for a
-        general simulation run, there are some settings that will be different
+        simulation to be run, there are some settings that will be different
         for every environment. These options can be specified in
         simulink_config. The available options can be found in the
-        documentation of SpacarEnv.change_settings().
+        documentation of SpacarEnv.change_settings(). One of these options is
+        the spacar_file. With copy_spacar you can copy a spacar model from the
+        template directory, this is done in the same way as copy_simulink.
 
         Finally, some parameters can be passed to Matlab at startup with
         matlab_params.
@@ -57,13 +60,12 @@ class SpacarEnv(gym.Env):
             simulation. This should include the file's .slx extension.
         working_dir -- The working directory for this environment's Matlab
             session. Any generated output files can be found here.
-        create_from_template -- If True, a file specified by template will be
-            copied. The resulting file's name is simulink_file.
-        template -- The name of the template file to copy. If in_template_dir
-            is True, the file will be searched for in bikey's template
-            directory.
-        in_template_dir --  Specifies whether a template from the template
-            directory should be used.
+        template_dir -- If this is set to anything but None the global template
+            directory will be set to this.
+        copy_simulink -- If True this will copy a simulink model from the
+            template directory into the working directory.
+        copy_spacar -- If True this will copy a spacar model from the template
+            directory into the working directory.
         simulink_config -- The specific configuration applied to the
             simulink_file by SpacarEnv.change_settings().
         matlab_params -- Parameters passed to Matlab at startup.
@@ -83,8 +85,18 @@ class SpacarEnv(gym.Env):
         self.session.cd(working_dir)
         self.working_dir = working_dir
 
-        if create_from_template:
-            self.copy_template(simulink_file, template, in_template_dir)
+        if template_dir is not None:
+            # set the template directory
+            bikey.utils.set_template_dir(template_dir)
+
+        if copy_simulink:
+            # copy a simulink model template
+            bikey.utils.copy_from_template_dir(simulink_file, working_dir)
+
+        if copy_spacar:
+            # copy a spacar model
+            bikey.utils.copy_from_template_dir(simulink_config['spacar_file'],
+                                               working_dir)
 
         self.simulink_loaded = False
         self.model_name = simulink_file[:-4] # remove the .slx extension
@@ -177,29 +189,6 @@ class SpacarEnv(gym.Env):
 
         return self.get_observations()
 
-    def copy_template(self, destination, template = "template.slx",
-                      in_template_dir = True):
-        """
-        Makes a copy of the specified template in this env's working directory.
-
-        If in_template_dir is True, a file located in the template dir with
-        name template will be searched for. Otherwise template will be
-        considered a file path by itself.
-
-        If destination already exists it will be replaced.
-        """
-
-        if in_template_dir:
-            template_dir = bikey.utils.find_template_dir()
-
-            shutil.copyfile(
-                os.path.join(template_dir, template),
-                os.path.join(self.working_dir, destination))
-
-        else:
-            shutil.copyfile(
-                template, os.path.join(self.working_dir, destination))
-
     def change_settings(self):
         """
         Makes requested changes to the opened Simulink file.
@@ -216,7 +205,8 @@ class SpacarEnv(gym.Env):
 
         if "spacar_file" in conf:
             # point spacar towards the correct model definition
-            spacar_file = conf["spacar_file"]
+            # (and remove the .dat file extension)
+            spacar_file = conf["spacar_file"][:-4]
             self.session.set_param(
                 f"{self.model_name}/spacar", 'filename', f"'{spacar_file}'",
                 nargout = 0)

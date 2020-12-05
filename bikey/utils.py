@@ -4,20 +4,22 @@ import shutil
 _custom_template_dir = False
 _template_dir = ""
 
-def copy_spacar_file(filename = "bicycle.dat", dir = os.getcwd()):
+
+def copy_from_template_dir(filename, working_dir=os.getcwd()):
     """
-    Copies a Spacar model from the bikey template directory.
+    Copies a file from the template directory to the given working directory.
 
     Args:
     filename -- The name of the file to be copied.
-    dir -- The directory where the file should be copied to.
+    working_dir -- The directory where the file should be copied to.
     """
     src = os.path.join(find_template_dir(), filename)
-    dest = os.path.join(dir, filename)
+    dest = os.path.join(working_dir, filename)
 
     shutil.copyfile(src, dest)
 
-def set_template_dir(dir = None):
+
+def set_template_dir(dir=None):
     """
     Overrides the default template directory that comes with bikey.
 
