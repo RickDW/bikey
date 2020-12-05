@@ -4,6 +4,8 @@ import numpy as np
 import datetime
 import os
 import argparse
+import time
+from queue import Full
 
 
 def parse_cli_args(host = '127.0.0.1', port = 65432, directory = os.getcwd(),
@@ -63,6 +65,9 @@ def setup_name_queue(server_dir):
     """
     Creates a fixed size queue that will store possible working directories.
 
+    Arguments:
+    # TODO
+
     Returns:
     A three-tuple containing
     - the thread that generates names of working directories
@@ -71,18 +76,20 @@ def setup_name_queue(server_dir):
     - a multiprocessing.Queue instance from which processes can take a working
         directory for their environment, if needed
     """
-    name_queue = mp.Queue(maxsize=5)
-    stop_event = threading.Event()
+    N = 10
+    name_queue = mp.Queue(maxsize = N)
+    stop_dir_generator = threading.Event()
 
-    thread = threading.Thread(target=provide_names,
-                              args=(server_dir, name_queue, stop_event))
+    thread = threading.Thread(target = provide_names,
+                              args = (server_dir, name_queue, N,
+                                    stop_dir_generator))
 
     thread.start()
 
-    return thread, stop_event, name_queue
+    return thread, stop_dir_generator, name_queue
 
 
-def provide_names(base_dir, queue, stop_event):
+def provide_names(base_dir, queue, queue_size, stop_dir_generator):
     """
     Keeps adding names to the queue until stop_event is set.
 
@@ -91,24 +98,38 @@ def provide_names(base_dir, queue, stop_event):
     representing the moment the server started running. This format allows for
     ten thousand directories per server active server, but this still means
     it is not a feasible option for running an environment server without
-    stopping.
+    ever stopping.
 
     The provided queue should have a maximum size, or the thread in which
     this function is called will keep adding subdirectories forever.
 
     Arguments:
-    base_dir -- The directory where the working directories will be located
-    queue -- A multiprocessing.Queue instance with a given maximum size
-    stop_event -- The event that tells this function to stop producing names
+    base_dir -- The directory where the working directories will be located.
+    queue -- A multiprocessing.Queue instance with a given maximum size.
+    queue-size -- The maximum size of the queue
+    stop_dir_generator -- The threading.Event that tells this function to stop
+        producing directory names.
     """
     time_string = datetime.datetime.today().strftime('%H.%M-%d.%m.%Y')
     base = os.path.join(base_dir, time_string + '-')
     counter = 1
 
-    while not stop_event.is_set():
-        # keep providing available directory names while thread is alive
-        name = base + f'{counter:04}'
-        queue.put(name)
+    name = lambda: base + f'{counter:04}'
+
+    # fill up the queue at startup without any delays since it is likely that a
+    # series of environments will be started simultaneously
+    for i in range(queue_size):
+        queue.put(name())
+        counter += 1
+
+    while not stop_dir_generator.is_set():
+        # keep providing available directory names
+        try:
+            queue.put(name(), False)  # do not block
+        except Full:
+            # queue is full, wait a while before trying again
+            time.sleep(10)
+            continue
         # print(f"Put {name} on the queue")
         counter += 1
 

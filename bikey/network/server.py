@@ -4,6 +4,7 @@ import time
 import multiprocessing as mp
 import threading
 
+
 from .server_utils import parse_cli_args, setup_name_queue, \
     display_connections, numpyify, denumpyify
 from .env_process import run_environment
@@ -68,8 +69,10 @@ def start_server(host, port, server_dir, max_connections):
 
     for address, thread in connections:
         thread.join()
+        print("One thread is definitely dead")
 
     dir_thread.join()
+    print("Directory gen. thread is definitely dead")
 
     # shutdown message is only displayed if all threads have died
     print("Environment server has shutdown")
@@ -86,7 +89,7 @@ def handle_client(client_socket, stop_server, name_queue):
     name_queue - A multiprocessing.Queue object containing designated
         directories for clients
     """
-    # print('Created a new thread')
+    print('Created a new thread')
     read_buffer = b''
 
     message_queue = mp.Queue()
@@ -100,7 +103,7 @@ def handle_client(client_socket, stop_server, name_queue):
     try:
         with client_socket:
             while not stop_server.is_set():
-                # print('Waiting for a new message')
+                print('Waiting for a new message')
 
                 data = client_socket.recv(1024)
 
@@ -118,23 +121,22 @@ def handle_client(client_socket, stop_server, name_queue):
                     message = json.loads(raw_message.decode(_encoding))
                     # make sure observations are turned into numpy arrays
                     numpyify(message)
-                    # print('Received new message: ', message)
+                    print('Received new message: ', message)
 
                     message_queue.put(message)
 
                     # wait for a response from the process
                     response = response_queue.get()
 
-                    # print('Received response from process: ', response)
+                    print('Received response from process: ', response)
 
                     if response is None:
                         # the entire server should be shut down (requested by
                         # client)
                         stop_server.set()
-                        client_socket.close()
                         # TODO: make the rest of the server shutdown
                         # TODO: implement an address check for command authorization
-                        print("Set the shutdown event and closed own socket")
+                        print("Set the server-wide shutdown event")
                         break
 
                     # make sure observations are turned into lists before being
@@ -143,19 +145,19 @@ def handle_client(client_socket, stop_server, name_queue):
                     client_socket.sendall(
                         json.dumps(response).encode(_encoding) + _delimiter)
 
-                    # print('Sent process response to client')
+                    print('Sent process response to client')
 
             else:
                 # the stop_server event was set
                 message_queue.put(None)
 
     except ConnectionResetError:
-        # print("The connection with the client was broken, killing thread and process")
+        print("The connection with the client was broken, killing thread and process")
         message_queue.put(None)
 
-    # print("End of thread")
+    print("End of thread")
     env_process.join()
-    # print("End of process")
+    print("End of process")
 
 
 def main():

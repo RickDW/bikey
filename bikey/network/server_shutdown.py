@@ -1,6 +1,7 @@
 import socket
 import json
 import argparse
+import time
 
 
 _delimiter = b'<END>'
@@ -26,21 +27,39 @@ def parse_cli_arguments():
 
 
 def send_shutdown_command(host, port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
 
-        message = json.dumps({'command': 'shut_down_server'})
+            message = json.dumps({'command': 'shut_down_server'})
 
-        s.sendall(message.encode(_encoding) + _delimiter)
+            s.sendall(message.encode(_encoding) + _delimiter)
 
-        data = s.recv(1024)
+            data = s.recv(1024)
 
-        if not data:
-            # connection is broken, as expected
-            print("Server has shut down")
+            if not data:
+                # connection is broken, as expected
+                print("Connection is broken as expected")
 
-        else:
-            print("Error: server has sent a message instead of shutting down")
+            else:
+                print("Error: server has sent a message instead of shutting down")
+
+    except ConnectionRefusedError:
+        print("Could not connect to server")
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # the main server thread could be blocking due to a call to accept()
+            # by connecting one more time it snaps out of this, but due to the
+            # stop_server Event being set it will not go back to blocking with
+            # accept() ==> it shuts down
+            s.connect((host, port))
+            print("Ding dong ditching the server")
+
+    except ConnectionRefusedError:
+        print("Second connection was broken, server must already be shut down")
+
+    print("Server should be shut down soon")
 
 
 def main():
