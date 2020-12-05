@@ -86,7 +86,7 @@ machine that started the server**, otherwise it will be ignored:
 python -m bikey.network.server_shutdown
 ```
 
-This command will not automatically detect address and port of a running
+This command will not automatically detect the address and port of a running
 server: they should be provided to the script. For an overview of the shutdown
 script, run it with the `-h` flag.
 
