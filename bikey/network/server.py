@@ -337,6 +337,6 @@ def denumpyify(message):
 
 
 if __name__ == '__main__':
-    start_server('127.0.0.1', 65432)
+    start_server('127.0.0.1', 65432, server_dir)
 
     print("End of server.py")

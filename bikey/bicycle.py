@@ -27,17 +27,18 @@ transmission_ratios = {
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
-    "initial_action": np.zeros((3,1)),
-    "spacar_file": "bicycle",
+    "initial_action": np.zeros((3, 1)),
+    "spacar_file": "bicycle.dat",
     "output_sbd": True,
     "use_spadraw": False
 }
 
+
 class BicycleEnv(SpacarEnv):
-    def __init__(self, simulink_file, working_dir = os.getcwd(),
-                 create_from_template = False, template = "bicycle_template.slx",
-                 in_template_dir = True, simulink_config =
-                 _default_sim_config, matlab_params = '-desktop'):
+    def __init__(self, simulink_file, working_dir = os.getcwd(), template_dir =
+                 None, copy_simulink = False, copy_spacar = False,
+                 simulink_config = _default_sim_config, matlab_params =
+                 '-desktop'):
         """
         This environment wraps the physics simulation of a scaled down bicycle.
 
@@ -45,8 +46,8 @@ class BicycleEnv(SpacarEnv):
         documentation instead.
 
         Arguments:
-        Arguments are equal to those of base.SpacarEnv.__init__, consult its
-            documentation instead.
+        Arguments are equal to those of bikey.base.SpacarEnv.__init__, consult
+            its documentation instead.
         """
 
         # define actions
@@ -91,14 +92,14 @@ class BicycleEnv(SpacarEnv):
         # define rewards
         # TODO: self.reward_range = (-inf, inf)
 
-        super().__init__(simulink_file, working_dir, create_from_template,
-                         template, in_template_dir, config, matlab_params)
+        super().__init__(simulink_file, working_dir, template_dir,
+                         copy_simulink, copy_spacar, config, matlab_params)
 
         # limits / at what point should the episode terminate?
         deg_to_rad = 2 * pi / 360
-        leaning_limit = 30 * deg_to_rad # leaning angle of bicycle
-        steering_limit = 50 * deg_to_rad # steering angle
-        ub_leaning_limit = 30 * deg_to_rad # leaning angle of upper body
+        leaning_limit = 30 * deg_to_rad  # leaning angle of bicycle
+        steering_limit = 50 * deg_to_rad  # steering angle
+        ub_leaning_limit = 30 * deg_to_rad  # leaning angle of upper body
 
         self.limits = \
             np.array([steering_limit, leaning_limit, ub_leaning_limit])
@@ -125,7 +126,8 @@ class BicycleEnv(SpacarEnv):
 
         info = {}
 
-        return (reward, done, info)
+        return reward, done, info
+
 
 gym.envs.register(
     id = "BicycleEnv-v0",
