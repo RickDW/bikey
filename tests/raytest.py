@@ -1,5 +1,14 @@
-import gym
+import ray
 from ray import tune
-from ray.rllib.agents.ppo import PPOTrainer
 
-tune.run(PPOTrainer, config={"env": "CartPole-v0"})
+ray.init()
+tune.run(
+    "PPO",
+    stop = {"episode_reward_mean": 200},
+    config = {
+        "env": "CartPole-v0",
+        "num_gpus": 1,
+        "num_workers": 1,
+        "lr": tune.grid_search([0.01, 0.001, 0.0001])
+    }
+)
