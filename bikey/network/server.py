@@ -16,6 +16,7 @@ import os
 _delimiter = b'<END>'
 _encoding = 'utf-8'
 
+# default options for the CLI
 HOST = "127.0.0.1"
 PORT = 65432
 DIRECTORY = os.getcwd()
@@ -26,7 +27,7 @@ def start_server(host, port, server_dir, connections):
     """
     Start an environment server on the specified interface and port.
 
-    As long as the number of connections is below the max_connections limit,
+    As long as the number of connections is below the connections limit,
     any incoming connections will be given their own thread. These threads in
     turn will spawn a process that will run the environment. This way any
     CPU-bound computations do not block the server's connections.
@@ -34,6 +35,8 @@ def start_server(host, port, server_dir, connections):
     Arguments:
     host -- The interface to listen on
     port -- The port to listen on
+    server_dir -- The directory where the server can store its files
+    connections -- The maximum number of simultaneous connections
     """
     threads = []
     connection_count = 0
@@ -341,8 +344,8 @@ def denumpyify(message):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Start a RL environment server',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description = 'Start a RL environment server',
+        formatter_class = argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-a', '--address',
                         help = 'the address on which the server can be reached',
