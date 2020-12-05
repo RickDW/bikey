@@ -5,14 +5,11 @@ import os
 
 
 def main():
-    os.chdir('C:\\Users\\rickx\\Museum\\bikey\\tests')
-
     env = gym.make('NetworkEnv-v0',
                    address = '127.0.0.1',
                    port = 65432,
                    env_name = 'BicycleEnv-v0',
                    simulink_file = 'simulation.slx',
-                   working_dir = os.getcwd(),
                    copy_simulink = True,
                    copy_spacar = True)
 
