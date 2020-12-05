@@ -1,5 +1,5 @@
 import gym
-import bikey
+import bikey.bicycle
 
 import numpy as np
 import os
@@ -9,24 +9,25 @@ import os
 def main():
     env = gym.make(
         "BicycleEnv-v0",
-        simulink_file="simulation_test.slx",
-        copy_simulink=True,
-        copy_spacar=True,
-        simulink_config={"output_sbd": True})
+        simulink_file = "simulation.slx",
+        working_dir = os.getcwd(),
+        copy_simulink = True,
+        copy_spacar = True,
+        simulink_config = {
+            'spacar_file': 'bicycle.dat'
+        })
 
     input("Press <enter> to start test simulation.")
 
     obs = env.reset()
 
     action = np.array([[0, 0, 0.01]]).T
+    done = False
 
-    while True:
+    while not done:
         results = env.step(action)
         print(results)
-
         done = results[2]
-        if done:
-            break
 
     return env
 

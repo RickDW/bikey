@@ -29,7 +29,7 @@ transmission_ratios = {
 _default_sim_config = {
     "initial_action": np.zeros((3, 1)),
     "spacar_file": "bicycle.dat",
-    "output_sbd": True,
+    "output_sbd": False,
     "use_spadraw": False
 }
 
