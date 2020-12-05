@@ -50,9 +50,13 @@ def start_server(host, port, server_dir, max_connections):
                 client_socket, addr = s.accept()
 
                 print("Incoming connection from: ", addr)
+
+                # determine if the client is running on this machine as well
+                from_server = host == addr[0]
+
                 thread = threading.Thread(target = handle_client,
-                                          args = (client_socket, stop_server,
-                                                  name_queue))
+                                          args = (client_socket, from_server,
+                                                  stop_server, name_queue))
                 connections.append((addr, thread))
                 thread.start()
 
@@ -79,7 +83,7 @@ def start_server(host, port, server_dir, max_connections):
     print("All threads or processes are dead")
 
 
-def handle_client(client_socket, stop_server, name_queue):
+def handle_client(client_socket, from_server, stop_server, name_queue):
     """
     Handles all communications with clients of the server in its own thread.
 
@@ -133,10 +137,11 @@ def handle_client(client_socket, stop_server, name_queue):
                     if response is None:
                         # the entire server should be shut down (requested by
                         # client)
-                        stop_server.set()
-                        # TODO: make the rest of the server shutdown
-                        # TODO: implement an address check for command authorization
-                        print("Set the server-wide shutdown event")
+                        if from_server:
+                            print("Request from same machine")
+                            stop_server.set()
+                            print("Server-wide shutdown initiated")
+
                         break
 
                     # make sure observations are turned into lists before being
