@@ -1,11 +1,14 @@
 import gym
 import bikey.bicycle  # registers the env with gym
+
 import numpy as np
-import socket
 import json
+import socket
 import multiprocessing as mp
 import threading
-from time import sleep
+import argparse
+
+import time
 import datetime
 import os
 
@@ -15,11 +18,11 @@ _encoding = 'utf-8'
 
 HOST = "127.0.0.1"
 PORT = 65432
-max_connections = 10
-server_dir = os.getcwd()
+DIRECTORY = os.getcwd()
+MAX_CONNECTIONS = 10
 
 
-def start_server(host, port, server_dir):
+def start_server(host, port, server_dir, connections):
     """
     Start an environment server on the specified interface and port.
 
@@ -46,7 +49,7 @@ def start_server(host, port, server_dir):
             connection_count = len(threads)
 
             # display all connections
-            print('\n' + '-' * 40)
+            print('\n' + '-' * 40 + '\n')
             if len(threads) > 0:
                 print("Current connections:")
                 for i, (address, thread) in enumerate(threads):
@@ -55,7 +58,7 @@ def start_server(host, port, server_dir):
                 print("Currently not connected to any clients")
             print('\n' + '-' * 40 + '\n')
 
-            if connection_count <= max_connections:
+            if connection_count <= connections:
                 print("Waiting for new connection")
                 client_socket, addr = s.accept()
 
@@ -69,7 +72,7 @@ def start_server(host, port, server_dir):
             else:
                 print('Server full')
                 print('Waiting 30 seconds before checking available slots again')
-                sleep(30) # wait half a minute before checking again
+                time.sleep(30) # wait half a minute before checking again
 
     # stop the thread that generates working directories
     stop_event.set()
@@ -336,7 +339,34 @@ def denumpyify(message):
             message['data']['observation'].tolist()
 
 
-if __name__ == '__main__':
-    start_server('127.0.0.1', 65432, server_dir)
+def main():
+    parser = argparse.ArgumentParser(
+        description='Start a RL environment server',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('-a', '--address',
+                        help = 'the address on which the server can be reached',
+                        default = HOST)
+    parser.add_argument('-p', '--port',
+                        help ='the port on which the server will listen',
+                        default = PORT,
+                        type = int)
+    parser.add_argument('-d', '--directory',
+                        help = 'the directory where the server will \
+                                store any files',
+                        default = os.getcwd(), )
+    parser.add_argument('-c', '--connections',
+                        help = 'the maximum number of simultaneous connections',
+                        default = MAX_CONNECTIONS,
+                        type = int)
+
+
+    args = parser.parse_args()
+
+    start_server(args.address, args.port, args.directory, args.connections)
 
     print("End of server.py")
+
+
+if __name__ == '__main__':
+    main()

@@ -70,6 +70,15 @@ The NetworkEnv class is designed to be reasonably generally applicable, but at
 the moment it assumes the actions and observations of underlying environment
 are numpy arrays.
 
+Run the `bikey.network.server` module to start an environment server:
+
+```
+python -m bikey.network.server
+
+# or use the -h flag to display the command's options:
+python -m bikey.network.server -h
+```
+
 ## More custom Spacar environments
 This package makes creating your own Spacar environments as easy as possible.
 All you need to do is to subclass bikey.base.SpacarEnv and override the
