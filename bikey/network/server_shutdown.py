@@ -1,7 +1,6 @@
 import socket
 import json
 import argparse
-import time
 
 
 _delimiter = b'<END>'

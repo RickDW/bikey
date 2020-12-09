@@ -64,7 +64,6 @@ class NetworkEnv(gym.Env):
             # TODO something went wrong!
             pass
 
-
         print("NetworkEnv initiated")
 
     def reset(self):
@@ -143,7 +142,7 @@ class NetworkEnv(gym.Env):
                 'command': command
             }
 
-        self.socket.sendall(json.dumps(message).encode(self._encoding) \
+        self.socket.sendall(json.dumps(message).encode(self._encoding)
                             + self._delimiter)
 
     def _receive_command(self):

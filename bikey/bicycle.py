@@ -27,7 +27,7 @@ transmission_ratios = {
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
-    "initial_action": np.zeros((3)),
+    "initial_action": np.zeros((3,)),
     "spacar_file": "bicycle.dat",
     "output_sbd": False,
     "use_spadraw": False
