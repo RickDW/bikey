@@ -27,7 +27,7 @@ transmission_ratios = {
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
-    "initial_action": np.zeros((3, 1)),
+    "initial_action": np.zeros((3)),
     "spacar_file": "bicycle.dat",
     "output_sbd": False,
     "use_spadraw": False
@@ -65,7 +65,7 @@ class BicycleEnv(SpacarEnv):
         action_space = gym.spaces.Box(
                 low = -torque_limits,
                 high = torque_limits,
-                shape = (3, 1),
+                shape = (3,),
                 dtype = np.float32)
 
         # define observations
@@ -77,7 +77,7 @@ class BicycleEnv(SpacarEnv):
         observation_space = gym.spaces.Box(
                 low = -infinity,
                 high = infinity,
-                shape = (6, 1),
+                shape = (6,),
                 dtype = np.float32)
 
         config = _default_sim_config.copy()
