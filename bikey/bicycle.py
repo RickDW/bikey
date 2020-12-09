@@ -57,9 +57,9 @@ class BicycleEnv(SpacarEnv):
             maxonF2140["limited_torque"] * transmission_ratios["body_leaning"]
 
         torque_limits = np.array([
-            [torque_limit_steering],
-            [torque_limit_leaning],
-            [torque_limit_propulsion]],
+            torque_limit_steering,
+            torque_limit_leaning,
+            torque_limit_propulsion],
             dtype = np.float32)
 
         action_space = gym.spaces.Box(
@@ -70,7 +70,7 @@ class BicycleEnv(SpacarEnv):
 
         # define observations
 
-        infinity = np.array([[inf], [inf], [inf], [inf], [inf], [inf]],
+        infinity = np.array([inf, inf, inf, inf, inf, inf],
                             dtype = np.float32)
 
         # TODO: give a better description of the observations?
