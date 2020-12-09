@@ -153,9 +153,7 @@ class NetworkEnv(gym.Env):
         A python dictionary containing 'command' and possibly 'data'.
         """
         while self._delimiter not in self._read_buffer:
-            print("Read buffer: ", self._read_buffer.decode(self._encoding))
             data = self.socket.recv(1024)
-            print("Data received")
             if not data:
                 self.close()
                 return
