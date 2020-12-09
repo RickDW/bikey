@@ -310,7 +310,7 @@ class SpacarEnv(gym.Env):
         or None if the simulation has not been started.
         """
         if self.session.exist('out'):
-            return np.array(self.session.eval('out.observations')).T
+            return np.array(self.session.eval('out.observations')).flatten()
         else:
             return None
 
