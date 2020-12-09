@@ -49,9 +49,21 @@ class NetworkEnv(gym.Env):
 
         response = self._receive_command()
         print("Response received: ", response)
-        if response['command'] != 'confirm':
+
+        if response['command'] == 'confirm':
+            # mimic the observation space on the server
+            obs_description = response['data']['observation_space']
+            self.observation_space = dict_to_gym_space(obs_description)
+
+            # mimic the action space on the server
+            action_description = response['data']['action_space']
+            self.action_space = dict_to_gym_space(action_description)
+
+        else:
+            print("Did not receive confirmation of initialization")
             # TODO something went wrong!
             pass
+
 
         print("NetworkEnv initiated")
 
@@ -156,7 +168,38 @@ class NetworkEnv(gym.Env):
 
         return json.loads(response.decode('utf-8'))
 
-gym.envs.register(
-    id = "NetworkEnv-v0",
-    entry_point = "bikey.network.network_env:NetworkEnv"
-)
+
+def dict_to_gym_space(description):
+    """
+    Reconstruct an observation or action space based on a description.
+
+    Currently only gym.spaces.Box is supported.
+
+    Arguments:
+    description -- A dictionary with the following attributes:
+        - space: e.g. 'gym.spaces.Box'
+        - low and high: the original space's low and high attributes
+        converted using np_array.tolist())
+        - shape: the shape property of the original space
+        - dtype: the data type of the original space
+
+    Returns:
+    An object that can be used as the observation or action space of an env
+    """
+    if description['space'] == 'gym.spaces.Box':
+        return gym.spaces.Box(
+            low = np.array(description['low']),
+            high = np.array(description['high']),
+            shape = description['shape'],
+            dtype = description['dtype']
+        )
+
+    else:
+        raise TypeError(f"NetworkEnv only supports gym.spaces.Box, not\
+                        '{description['space']}'")
+
+
+# gym.envs.register(
+#     id = "NetworkEnv-v0",
+#     entry_point = "bikey.network.network_env:NetworkEnv"
+# )

@@ -61,8 +61,15 @@ def run_environment(message_queue, response_queue, name_queue):
             env = gym.make(data['env'], **data['config'])
             initialized = True
             # print("Initialized environment")
+
             response_queue.put({
-                'command': 'confirm'
+                'command': 'confirm',
+                'data': {
+                    # send the client information about the observation and action
+                    # spaces so it can reconstruct them
+                    'observation_space': gym_space_to_dict(env.observation_space),
+                    'action_space': gym_space_to_dict(env.action_space)
+                }
             })
 
         elif command == 'reset':
@@ -115,3 +122,32 @@ def run_environment(message_queue, response_queue, name_queue):
             # do not forget to put an item on the response queue, or the thread
             # will block, and so will everything else
             pass
+
+
+def gym_space_to_dict(space):
+    """
+    Writes the properties of an observation or action space to a dictionary.
+
+    This can be sent across a network using JSON, to allow the space to be
+    reconstructed on a different machine. For now this method only supports
+    gym.spaces.Box.
+
+    Arguments:
+    space -- The observation or action space to be described.
+
+    Returns:
+    A dictionary containing properties of a gym space, i.e. the type of space,
+    upper and lower bounds, shape, and data type.
+    """
+    if type(space) is gym.spaces.Box:
+        return {
+            'space': 'gym.spaces.Box',
+            'low': space.low.tolist(),
+            'high': space.high.tolist(),
+            'shape': space.shape,
+            'dtype': str(space.dtype)
+        }
+    else:
+        # not supported
+        raise TypeError("Cannot convert anything but the gym.spaces.Box space\
+                        to JSON")
