@@ -85,6 +85,9 @@ class SpacarEnv(gym.Env):
         self.session.cd(working_dir)
         self.working_dir = working_dir
 
+        # disable matlab's notification sound
+        self.session.eval('beep off', nargout = 0)
+
         if template_dir is not None:
             # set the template directory
             bikey.utils.set_template_dir(template_dir)
