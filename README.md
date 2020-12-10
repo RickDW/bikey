@@ -62,13 +62,20 @@ of environments, meaning the environment can be controlled on one computer
 while it runs on another that is reachable over a network. This will add some
 latency and may make your training sessions less efficient.
 
-Warning: currently the code for the NetworkEnv class lacks basics security
+Warning: currently the code for the NetworkEnv class lacks basic security
 features. I hope to implement some of those in the near future. Pull requests
 are also welcome.
 
 The NetworkEnv class is designed to be reasonably generally applicable, but at
 the moment it assumes the actions and observations of underlying environment
-are numpy arrays.
+are numpy arrays. Another thing to be wary of is the lack of support for
+observation spaces and action spaces of any type other than gym.spaces.Discrete
+or gym.spaces.Box. If support for other spaces is needed you could easily
+implement this yourself, by adding functionality to gym_space_to_dict in 
+bikey.network.env_process as well as dict_to_gym_space in 
+bikey.network.network_env. Simply put the details necessary to describe or 
+reconstruct a space in a dictionary, and make sure this dictionary can be
+converted to JSON.
 
 Run the `bikey.network.server` module to start an environment server:
 

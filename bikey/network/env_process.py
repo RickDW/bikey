@@ -130,7 +130,7 @@ def gym_space_to_dict(space):
 
     This can be sent across a network using JSON, to allow the space to be
     reconstructed on a different machine. For now this method only supports
-    gym.spaces.Box.
+    gym.spaces.Box and gym.spaces.Discrete.
 
     Arguments:
     space -- The observation or action space to be described.

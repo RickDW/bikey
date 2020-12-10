@@ -170,7 +170,7 @@ def dict_to_gym_space(description):
     """
     Reconstruct an observation or action space based on a description.
 
-    Currently only gym.spaces.Box is supported.
+    Currently only gym.spaces.Box and gym.spaces.Discrete are supported.
 
     Arguments:
     description -- A dictionary with the following attributes:
