@@ -20,14 +20,14 @@ maxonF2140 = {
 }
 
 transmission_ratios = {
-    "steering": 30,
-    "body_leaning": 1,
+    "steering": 1,
+    "body_leaning": 30,
     "propulsion": 1
 }
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
-    "initial_action": np.zeros((3, 1)),
+    "initial_action": np.zeros((3,)),
     "spacar_file": "bicycle.dat",
     "output_sbd": False,
     "use_spadraw": False
@@ -57,27 +57,27 @@ class BicycleEnv(SpacarEnv):
             maxonF2140["limited_torque"] * transmission_ratios["body_leaning"]
 
         torque_limits = np.array([
-            [torque_limit_steering],
-            [torque_limit_leaning],
-            [torque_limit_propulsion]],
+            torque_limit_steering,
+            torque_limit_leaning,
+            torque_limit_propulsion],
             dtype = np.float32)
 
         action_space = gym.spaces.Box(
                 low = -torque_limits,
                 high = torque_limits,
-                shape = (3, 1),
+                shape = (3,),
                 dtype = np.float32)
 
         # define observations
 
-        infinity = np.array([[inf], [inf], [inf], [inf], [inf], [inf]],
+        infinity = np.array([inf, inf, inf, inf, inf, inf],
                             dtype = np.float32)
 
         # TODO: give a better description of the observations?
         observation_space = gym.spaces.Box(
                 low = -infinity,
                 high = infinity,
-                shape = (6, 1),
+                shape = (6,),
                 dtype = np.float32)
 
         config = _default_sim_config.copy()

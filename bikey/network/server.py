@@ -99,8 +99,9 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
     message_queue = mp.Queue()
     response_queue = mp.Queue()
 
-    env_process = mp.Process(target = run_environment,
-                         args = (message_queue, response_queue, name_queue))
+    env_process = mp.Process(
+        target = run_environment,
+        args = (message_queue, response_queue, name_queue))
 
     env_process.start()
 

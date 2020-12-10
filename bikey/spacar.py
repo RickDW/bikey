@@ -1,11 +1,10 @@
-import ssl # TODO: make this optional on windows? see note below
+import ssl  # TODO: make this optional on windows? see note below
 import matlab.engine
 
 import gym
 import bikey.utils
 import numpy as np
 import os
-import shutil
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's
@@ -19,11 +18,12 @@ import shutil
 
 # only settings supported by SpacarEnv.change_settings will have an effect
 _default_sim_config = {
-    "initial_action": np.zeros((3,1)),
+    "initial_action": np.zeros((3,)),
     "spacar_file": "bicycle.dat",
     "output_sbd": False,
     "use_spadraw": False
 }
+
 
 class SpacarEnv(gym.Env):
     def __init__(self, simulink_file, working_dir = os.getcwd(), template_dir =
@@ -85,6 +85,9 @@ class SpacarEnv(gym.Env):
         self.session.cd(working_dir)
         self.working_dir = working_dir
 
+        # disable matlab's notification sound
+        self.session.eval('beep off', nargout = 0)
+
         if template_dir is not None:
             # set the template directory
             bikey.utils.set_template_dir(template_dir)
@@ -99,7 +102,7 @@ class SpacarEnv(gym.Env):
                                                working_dir)
 
         self.simulink_loaded = False
-        self.model_name = simulink_file[:-4] # remove the .slx extension
+        self.model_name = simulink_file[:-4]  # remove the .slx extension
 
         config = _default_sim_config.copy()
         config.update(simulink_config)
@@ -126,7 +129,7 @@ class SpacarEnv(gym.Env):
         - General information for this time step
         """
         if not self.simulink_loaded or self.done:
-            return None # TODO: throw an error instead of returning None
+            return None  # TODO: throw an error instead of returning None
 
         if self.get_sim_status() == 'paused':
             # TODO: add safeguards that prevent updating action inputs before
@@ -158,7 +161,7 @@ class SpacarEnv(gym.Env):
                 self.done = True
                 self.send_sim_command('stop')
 
-            return (observations, reward, self.done, info)
+            return observations, reward, self.done, info
 
     def reset(self):
         """
@@ -310,7 +313,7 @@ class SpacarEnv(gym.Env):
         or None if the simulation has not been started.
         """
         if self.session.exist('out'):
-            return np.array(self.session.eval('out.observations')).T
+            return np.array(self.session.eval('out.observations')).flatten()
         else:
             return None
 
@@ -344,4 +347,4 @@ class SpacarEnv(gym.Env):
         reward = 0
         done = False
         info = {}
-        return (reward, done, info)
+        return reward, done, info

@@ -19,7 +19,7 @@ def copy_from_template_dir(filename, working_dir=os.getcwd()):
     shutil.copyfile(src, dest)
 
 
-def set_template_dir(dir=None):
+def set_template_dir(directory=None):
     """
     Overrides the default template directory that comes with bikey.
 
@@ -27,12 +27,12 @@ def set_template_dir(dir=None):
     dir -- the custom template directory. If None the default template
         directory will be used.
     """
-    if dir is None:
+    if directory is None:
         # fall back to bikey's default template dir
         _custom_template_dir = False
     else:
         _custom_template_dir = True
-        _template_dir = dir
+        _template_dir = directory
 
 
 def find_template_dir():
