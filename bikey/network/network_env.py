@@ -190,6 +190,9 @@ def dict_to_gym_space(description):
             shape = description['shape'],
             dtype = description['dtype']
         )
+    
+    elif description['space'] == 'gym.spaces.Discrete':
+        return gym.spaces.Discrete(description['n'])
 
     else:
         raise TypeError(f"NetworkEnv only supports gym.spaces.Box, not\

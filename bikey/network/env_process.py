@@ -147,6 +147,11 @@ def gym_space_to_dict(space):
             'shape': space.shape,
             'dtype': str(space.dtype)
         }
+    elif type(space) is gym.spaces.Discrete:
+        return {
+            'space': 'gym.spaces.Discrete',
+            'n': space.n
+        }
     else:
         # not supported
         raise TypeError("Cannot convert anything but the gym.spaces.Box space\
