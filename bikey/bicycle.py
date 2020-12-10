@@ -20,8 +20,8 @@ maxonF2140 = {
 }
 
 transmission_ratios = {
-    "steering": 30,
-    "body_leaning": 1,
+    "steering": 1,
+    "body_leaning": 30,
     "propulsion": 1
 }
 
