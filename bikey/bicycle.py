@@ -60,7 +60,7 @@ class BicycleEnv(SpacarEnv):
             torque_limit_steering,
             torque_limit_leaning,
             torque_limit_propulsion],
-            dtype = np.float32)
+            dtype = np.float32) / 5
 
         action_space = gym.spaces.Box(
                 low = -torque_limits,
