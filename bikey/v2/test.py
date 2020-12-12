@@ -1,30 +1,89 @@
-import matlab.engine
-import bikey.utils
+from bikey.v2.simulink_process import matlab_handler
+
+import gym
 import socket
+import multiprocessing as mp
+import os
+import numpy as np
 
-engine = matlab.engine.start_matlab('-desktop')
-engine.cd(bikey.utils.find_template_dir(), nargout = 0)
 
-model = 'inputtest'
-handle = engine.open_system(model, nargout = 0)
-print("Matlab loaded")
+# only settings supported by SpacarEnv.change_settings will have an effect
+# TODO: make all of these options arguments of the __init__ function
+_default_sim_config = {
+    "spacar_file": "bicycle.dat",
+    "output_sbd": False,
+    "use_spadraw": False
+}
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(('127.0.0.1', 0))
-server.listen()
-port = server.getsockname()[1]
-print(f"Server socket listening on port {port}")
 
-engine.set_param(f'{model}/server port', 'value', str(port), nargout = 0)
-print("Provided simulink model with port number")
+class SpacarEnv(gym.Env):
+    def __init__(self, simulink_file, spacar_file, working_dir = os.getcwd(),
+                 template_dir = None, copy_simulink = False, copy_spacar =
+                 False, first_action = np.zeros((3,)), output_sbd = False,
+                 use_spadraw = False, matlab_params = ''):
+        super().__init__()
 
-connection, address = server.accept()
-while True:
-    data = connection.recv(1024)
-    if not data:
-        break
+        config = {
+            'simulink_file': simulink_file,
+            'spacar_file': spacar_file,
+            'working_dir': working_dir,
+            'template_dir': template_dir,
+            'copy_simulink': copy_simulink,
+            'copy_spacar': copy_spacar,
+            'first_action': first_action,
+            'output_sbd': output_sbd,
+            'use_spadraw': use_spadraw,
+            'matlab_params': matlab_params
+        }
+        self._setup(config)
 
-    connection.sendall('129\n'.encode('utf-8'))
+    def _setup(self, config):
+        # create the server socket to which the simulation will connect
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind(('127.0.0.1', 0))  # let OS choose an available port
+        self.server.listen()
+        port = self.server.getsockname()[1]  # the chosen port
+        print(f"Server socket listening on port {port}")
 
-server.close()
-print("Server socket closed")
+        events = (None,)  # TODO add threading.Events for communication
+
+        # start a process in which matlab will run
+        self.process = mp.Process(target = matlab_handler,
+                                  args = (config, port, events))
+        self.process.start()
+        print("Matlab process launched")
+
+    def reset(self):
+        client, address = self.server.accept()
+        # TODO close communications and notify process of new simulation
+        self.client = client
+
+        self.x = 0
+
+    def step(self, action):
+        # TODO
+        message = self._receive_message()
+
+        self._send_message("placeholder")
+
+    def close(self):
+        self.server.close()
+        print("Server socket closed")
+        print(f"Sent {self.x} messages since last reset")
+
+        self.process.join()
+        print("Process is dead")
+
+    def _receive_message(self):
+        pass  # TODO
+
+    def _send_message(self, message):
+        pass  # TODO
+
+
+if __name__ == '__main__':
+    env = SpacarEnv(
+        'inputtest.slx',
+        'bicycle.dat',
+        copy_simulink = True,
+        copy_spacar = True)

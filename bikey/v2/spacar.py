@@ -39,9 +39,8 @@ class SpacarEnv(gym.Env):
         self.matlab.cd(working_dir)
         self.working_dir = working_dir
 
-        if template_dir is not None:
-            # set the template directory
-            bikey.utils.set_template_dir(template_dir)
+        # set the template directory
+        bikey.utils.set_template_dir(template_dir)
 
         if copy_simulink:
             # copy a simulink model template
