@@ -30,12 +30,13 @@ class SpacarEnv(gym.Env):
             'template_dir': template_dir,
             'copy_simulink': copy_simulink,
             'copy_spacar': copy_spacar,
-            'first_action': first_action,
             'output_sbd': output_sbd,
             'use_spadraw': use_spadraw,
             'matlab_params': matlab_params
         }
         self._setup(config)
+
+        self.first_action = first_action
 
     def _setup(self, config):
         # create the server socket to which the simulation will connect
@@ -60,11 +61,17 @@ class SpacarEnv(gym.Env):
 
         self.x = 0
 
+        observation, *_ = self.step(self.first_action)
+
+        return observation
+
     def step(self, action):
         # TODO
         message = self._receive_message()
 
         self._send_message("placeholder")
+
+        return None, 0, False, {}
 
     def close(self):
         self.server.close()
@@ -86,4 +93,15 @@ if __name__ == '__main__':
         'inputtest.slx',
         'bicycle.dat',
         copy_simulink = True,
-        copy_spacar = True)
+        copy_spacar = True,
+        matlab_params = '-desktop -nosplash')
+
+    env.reset()
+
+    while True:
+        data = env.client.recv(1024)
+        if not data:
+            break
+
+        env.client.sendall('129\n'.encode('utf-8'))
+        env.x += 1

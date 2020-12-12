@@ -18,7 +18,7 @@ def matlab_handler(config, server_port, events):
         bikey.utils.copy_from_template_dir(config["spacar_file"],
                                            config["working_dir"])
 
-    model = config['simulink_model'][:-4]  # strip the file extension
+    model = config['simulink_file'][:-4]  # strip the file extension
 
     # engine.open_system(model, nargout = 0) # use GUI
     handle = engine.load_system(model)
@@ -28,7 +28,7 @@ def matlab_handler(config, server_port, events):
     print("Provided simulink model with port number")
 
     output = engine.sim(model)
-    print("Simulation output: ", output)
+
     # TODO create a loop that allows multiple simulations to be run in this process
 
     # TODO close simulink model and quit matlab
