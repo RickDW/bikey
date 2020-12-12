@@ -27,10 +27,10 @@ register_env("network_environment", lambda config: NetworkEnv(**config))
 
 analysis = tune.run(
     "PPO",
-    num_samples = 3,
+    num_samples = 1,
     stop = {
         "episode_reward_mean": 15,
-        "num_iterations": 100
+        "training_iteration": 100
     },
     config = {
         "env": "network_environment",
