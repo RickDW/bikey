@@ -18,6 +18,7 @@ import socket
 # TODO: update all documentation after refactoring
 
 # only settings supported by SpacarEnv.change_settings will have an effect
+# TODO: make all of these options arguments of the __init__ function
 _default_sim_config = {
     "spacar_file": "bicycle.dat",
     "output_sbd": False,
