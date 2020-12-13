@@ -1,0 +1,374 @@
+SPACAR Student  version 05-Mar-2019 (0064/DP/C300/D120/E60/I12/O25).
+(c) Structural Dynamics, Acoustics & ControlUniversity of Twente &
+    Department of Engineering MechanicsDelft University of Technology
+
+================================================================================
+ Kinematic data
+
+ % Original file bike3.dat by Arend Schwab, dated March 31, 2011, retrieved October 16, 2018 from
+ %     http://bicycle.tudelft.nl/schwab/Bicycle/bike3dat.txt
+  
+ % Edit 1: Ronald Aarts
+ %     Modified for University of Twente SPACAR.
+  
+ % Edit 2: Robert Giesen
+ %     Modified for use with the bicycle robot.
+  
+ % Edit 3: Rick de Wolf
+ %     Modified for use in a reinforcement learning environment.
+  
+ % This file can be used for a SPACAR forward dynamic simulation (mode 1), as-well as linearisation (mode 7 - 10).
+ %%---------------------------------------------------------------------------------------------------------------
+  
+ %% Kinematics - elements
+  
+ % Frame
+ pinbody 1 1 2 3                           % Frame (node 1) to steering head (node 3)
+ pinbody 2 1 2 4                           % Frame (node 1) to rear wheel hub (node 4)
+ pinbody 3 1 2 5                           % Frame (node 1) to frame (node 5)
+  
+ % Rider
+ hinge 4 2 6         1.00 0.00 0.00        % Rider moment of inertia
+ pinbody 5 5 6 7                           % Frame (node 5) to CoM frame (node 7)
+ hinge 16 6 17       -1.00 0.00 0.00       % Rider lean angle
+ beam 18 5 17 20 21                        % Frame (node 5) to rider (node 20)
+  
+ % Steer
+ hinge 6 2 8         0.32 0.00 -1.0        % Steering angle
+  
+ % Front fork + trail
+ pinbody 7 3 8 9                           % Steering head (node 3) to CoM front fork / handle bars
+ pinbody 8 3 8 10                          % Steering head (node 3) to front wheel (node 10)
+  
+ % Front wheel
+ hinge 9 8 11 0.00   1.00 0.00             % Front wheel rotation angle
+ wheel 10 10 11 12   0.00 1.00 0.00        % Front wheel (node 10)
+  
+ % Rear wheel
+ hinge 11 2 13       0.00 1.00 0.00        % Rear wheel rotation angle
+ wheel 12 4 13 14    0.00 1.00 0.00        % Rear wheel (node 4)
+  
+ % Connection to origin to measure orientation and translation
+ hinge 13 2 15       0.00 -1.00 0.00       % Pitch angle (nodes 2, 15)
+ hinge 14 15 16      -1.00 0.00 0.00       % Roll angle (nodes 15, 16)
+ hinge 15 16 18      0.00 0.00 1.00        % Yaw angle (nodes 16, 18)
+  
+ %% Kinematics - coordinates
+  
+ x 1 0.1332 0.0 0.1000                     % Lower frame node
+ x 3 0.2409 0.0 0.2301                     % Upper frame node / Steering head
+ x 5 0.0857 0.0 0.2783                     % Upper frame node right
+ x 7 0.066 0.0 0.1538                      % CoM frame
+ x 4 0.0 0.0 0.1000                        % Rear wheel hub
+ x 9 0.2561 0.0 0.2395                     % CoM front fork / handle bars
+ x 10 0.2913 0.0 0.1000                    % Front wheel hub
+ x 12 0.2913 0.0 0.0                       % Front wheel contact point
+ x 14 0.0 0.0 0.0                          % Rear wheel contact point
+ x 20 0.0857 0.0 0.3793                    % CoM rider
+  
+ %% Kinematics - constraints and degrees of freedom (DOF)
+  
+ % Constrained coordinates
+ fix 18                                    % Rotational reference
+  
+ % Rheonomic DOF?s
+ % inpute 11 1                               % Back wheel rotation
+ dyne 11 1                                 % Back wheel rotation
+  
+ % Dynamic DOF?s
+ dyne 6 1                                  % Steering angle
+ dyne 14 1                                 % Roll angle
+ dyne 16 1                                 % Rider lean angle
+  
+ % Kinematic DOF?s
+ kine 9 1                                  % Front wheel rotation
+ kine 15 1                                 % Yaw angle
+ kinx 14 1                                 % x-displacement measurement
+ kinx 14 2                                 % y-displacement measurement
+  
+ % Remaining releases needed in the connection to the fixed reference nodes 17 and 18:
+ rlse 13 1                                 % Pitch angle
+  
+ end
+
+ Elements used in this model:
+    No  Type         Element nodes          Deformation parameters (with type)    Max.def.par.
+   --- -------- ----------------------- ----------------------------------------------- -----
+     1 Pinbody    1   2   3               1-O   2-O   3-O                                   3
+     2 Pinbody    1   2   4               4-O   5-O   6-O                                   3
+     3 Pinbody    1   2   5               7-O   8-O   9-O                                   3
+     4 Hinge      2   6                  10-O  11-O  12-O                                   3
+     5 Pinbody    5   6   7              13-O  14-O  15-O                                   3
+     6 Hinge      2   8                  64-M  16-O  17-O                                   3
+     7 Pinbody    3   8   9              18-O  19-O  20-O                                   3
+     8 Pinbody    3   8  10              21-O  22-O  23-O                                   3
+     9 Hinge      8  11                  68-K  24-O  25-O                                   3
+    10 Wheel     10  11  12              26-O  27-O  28-O  29-O  30-O  31-O                 6
+    11 Hinge      2  13                  65-M  32-O  33-O                                   3
+    12 Wheel      4  13  14              34-O  35-O  36-O  37-O  38-O  39-O                 6
+    13 Hinge      2  15                  70-C  40-O  41-O                                   3
+    14 Hinge     15  16                  66-M  42-O  43-O                                   3
+    15 Hinge     16  18                  69-K  44-O  45-O                                   3
+    16 Hinge      6  17                  67-M  46-O  47-O                                   3
+    17 Euler      2                      48-O                                               1
+    18 Beam       5  17  20  21          49-O  50-O  51-O  52-O  53-O  54-O                 6
+    19 Euler      6                      55-O                                               1
+    20 Euler      8                      56-O                                               1
+    21 Euler     11                      57-O                                               1
+    22 Euler     13                      58-O                                               1
+    23 Euler     15                      59-O                                               1
+    24 Euler     16                      60-O                                               1
+    25 Euler     17                      61-O                                               1
+    26 Euler     18                      62-O                                               1
+    27 Euler     21                      63-O                                               1
+   --- -------- ----------------------- ----------------------------------------------- -----
+
+ Bending-linked elongation calculated for beam(s):  18
+
+ Nodal point information
+  Node   Pos.pars (with type)    Values
+  ---- ----------------------- -----------------------------------------------
+     1   6-C   7-C   8-C           0.13320     0.00000     0.10000            
+     2   9-C  10-C  11-C  12-C     1.00000     0.00000     0.00000     0.00000
+     3  13-C  14-C  15-C           0.24090     0.00000     0.23010            
+     4  16-C  17-C  18-C           0.00000     0.00000     0.10000            
+     5  19-C  20-C  21-C           0.08570     0.00000     0.27830            
+     6  22-C  23-C  24-C  25-C     1.00000     0.00000     0.00000     0.00000
+     7  26-C  27-C  28-C           0.06600     0.00000     0.15380            
+     8  29-C  30-C  31-C  32-C     1.00000     0.00000     0.00000     0.00000
+     9  33-C  34-C  35-C           0.25610     0.00000     0.23950            
+    10  36-C  37-C  38-C           0.29130     0.00000     0.10000            
+    11  39-C  40-C  41-C  42-C     1.00000     0.00000     0.00000     0.00000
+    12  43-C  44-C  45-C           0.29130     0.00000     0.00000            
+    13  46-C  47-C  48-C  49-C     1.00000     0.00000     0.00000     0.00000
+    14   4-K   5-K  50-C           0.00000     0.00000     0.00000            
+    15  51-C  52-C  53-C  54-C     1.00000     0.00000     0.00000     0.00000
+    16  55-C  56-C  57-C  58-C     1.00000     0.00000     0.00000     0.00000
+    17  59-C  60-C  61-C  62-C     1.00000     0.00000     0.00000     0.00000
+    18  63-C   1-O   2-O   3-O     1.00000     0.00000     0.00000     0.00000
+    20  64-C  65-C  66-C           0.08570     0.00000     0.37930            
+    21  67-C  68-C  69-C  70-C     1.00000     0.00000     0.00000     0.00000
+  ---- ----------------------- -----------------------------------------------
+
+ Degree of freedom information:
+   DOF PosPar DefPar Type     
+   --- ------ ------ ---------
+     1            64 -Dynamic 
+     2            65 -Dynamic 
+     3            66 -Dynamic 
+     4            67 -Dynamic 
+   --- ------ ------ ---------
+ Condition number of Dcc:  0.6022E+02
+================================================================================
+ Dynamic data
+
+ halt
+  
+ %%---------------------------------------------------------------------------------------------------------------
+  
+ %% Dynamics - mass and inertia
+  
+ % Front Handlebar mass and inertia
+ xm 2 0.0122 0.0 0.0036 0.015 0.0 0.0039
+  
+ % Rear wheel mass
+ xm 4 0.5122
+  
+ % Rider mass and inertia
+ xm 6 0.0281 0.0 -0.0118 0.0435 0.0 0.0343
+ xm 7 4.5897
+ xm 20 0.5
+  
+ % Front Fork mass
+ xm 9 1.5349
+  
+ % Front wheel mass
+ xm 10 0.5122
+  
+ % Inertia front wheel, multiplied by its mass
+ xm 11 0.0017 0.0 0.0 0.0033 0.0 0.0017
+  
+ % Inertia rear wheel, multiplied by its mass
+ xm 13 0.0017 0.0 0.0 0.0033 0.0 0.0017
+  
+ % Rider damping
+ edamp 16 1
+  
+ %% Dynamics - (gravitational) forces
+  
+ gravity 0.0 0.0 -9.81
+  
+ %% Dynamics - specific inputs for rheonomic DOF?s
+ inpute 11 1 0.0 20 0.0  % TODO should this stay?
+  
+ %% Dynamics - timestep
+ % timestep 10.0 1000 % seems to be redundant in a spasim simulation
+  
+* Invalid deformation parameter   1
+ end
+
+ NEO =   63, NEMM =   63, NEM =   67, NEC =   70.
+
+ NXO =    3, NXC =   70, NXMM =   70, NXM =   70.
+ WITHOUT EULER ELEMENTS, ACCORDING TO THE GRAPHICAL USER INTERFACE
+ NX  =   60, NEO  =   53, NXO =    3, NDOF=    4.
+ GRAVITY:   0.00000E+00  0.00000E+00 -9.81000E+00
+
+ Element data (showing only non-zero values):
+    No Type     (K) Stiffness, (D) Damping, (M) Element mass, (S) Pre-stress
+   --- -------- -------------------------------------------------------------
+     1 Pinbody All data are zero
+     2 Pinbody All data are zero
+     3 Pinbody All data are zero
+     4 Hinge   All data are zero
+     5 Pinbody All data are zero
+     6 Hinge   All data are zero
+     7 Pinbody All data are zero
+     8 Pinbody All data are zero
+     9 Hinge   All data are zero
+    10 Wheel   All data are zero
+    11 Hinge   All data are zero
+    12 Wheel   All data are zero
+    13 Hinge   All data are zero
+    14 Hinge   All data are zero
+    15 Hinge   All data are zero
+    16 Hinge    D    0.10000E+01    0              0              0          
+    17 Euler   All data are zero
+    18 Beam    All data are zero
+    19 Euler   All data are zero
+    20 Euler   All data are zero
+    21 Euler   All data are zero
+    22 Euler   All data are zero
+    23 Euler   All data are zero
+    24 Euler   All data are zero
+    25 Euler   All data are zero
+    26 Euler   All data are zero
+    27 Euler   All data are zero
+   --- -------- -------------------------------------------------------------
+
+ Nodal point forces
+  Node  Pos.par / value pairs
+  ---- ------------------------------------------------------------------------
+     1   6:  0             7:  0             8:  0                            
+     2   9:  0            10:  0            11:  0            12:  0          
+     3  13:  0            14:  0            15:  0                            
+     4  16:  0            17:  0            18:  0                            
+     5  19:  0            20:  0            21:  0                            
+     6  22:  0            23:  0            24:  0            25:  0          
+     7  26:  0            27:  0            28:  0                            
+     8  29:  0            30:  0            31:  0            32:  0          
+     9  33:  0            34:  0            35:  0                            
+    10  36:  0            37:  0            38:  0                            
+    11  39:  0            40:  0            41:  0            42:  0          
+    12  43:  0            44:  0            45:  0                            
+    13  46:  0            47:  0            48:  0            49:  0          
+    14   4:  0             5:  0            50:  0                            
+    15  51:  0            52:  0            53:  0            54:  0          
+    16  55:  0            56:  0            57:  0            58:  0          
+    17  59:  0            60:  0            61:  0            62:  0          
+    18  63:  0             1:  0             2:  0             3:  0          
+    20  64:  0            65:  0            66:  0                            
+    21  67:  0            68:  0            69:  0            70:  0          
+  ---- ------------------------------------------------------------------------
+
+ Nodal point mass
+  Node  Value 1           2           3           4           5           6   
+  ---- -----------------------------------------------------------------------
+     1  0           0           0           0           0           0         
+     2  0.1220E-01  0           0.3600E-02  0.1500E-01  0           0.3900E-02
+     3  0           0           0           0           0           0         
+     4  0.5122E+00  0.5122E+00  0.5122E+00  0           0           0         
+     5  0           0           0           0           0           0         
+     6  0.2810E-01  0          -0.1180E-01  0.4350E-01  0           0.3430E-01
+     7  0.4590E+01  0.4590E+01  0.4590E+01  0           0           0         
+     8  0           0           0           0           0           0         
+     9  0.1535E+01  0.1535E+01  0.1535E+01  0           0           0         
+    10  0.5122E+00  0.5122E+00  0.5122E+00  0           0           0         
+    11  0.1700E-02  0           0           0.3300E-02  0           0.1700E-02
+    12  0           0           0           0           0           0         
+    13  0.1700E-02  0           0           0.3300E-02  0           0.1700E-02
+    14  0           0           0           0           0           0         
+    15  0           0           0           0           0           0         
+    16  0           0           0           0           0           0         
+    17  0           0           0           0           0           0         
+    18  0           0           0           0           0           0         
+    20  0.5000E+00  0.5000E+00  0.5000E+00  0           0           0         
+    21  0           0           0           0           0           0         
+  ---- -----------------------------------------------------------------------
+
+ Nodal point gyro
+  Node  Value 1           2           3           4           5   
+  ---- -----------------------------------------------------------
+     1  0           0           0           0           0         
+     2  0           0           0           0           0         
+     3  0           0           0           0           0         
+     4  0           0           0           0           0         
+     5  0           0           0           0           0         
+     6  0           0           0           0           0         
+     7  0           0           0           0           0         
+     8  0           0           0           0           0         
+     9  0           0           0           0           0         
+    10  0           0           0           0           0         
+    11  0           0           0           0           0         
+    12  0           0           0           0           0         
+    13  0           0           0           0           0         
+    14  0           0           0           0           0         
+    15  0           0           0           0           0         
+    16  0           0           0           0           0         
+    17  0           0           0           0           0         
+    18  0           0           0           0           0         
+    20  0           0           0           0           0         
+    21  0           0           0           0           0         
+  ---- -----------------------------------------------------------
+
+ Total mass of the system =   0.7649000E+01
+================================================================================
+
+ Zero order transfer function position parameters
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  1.33200E-01
+  0.00000E+00  1.00000E-01  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  2.40900E-01  0.00000E+00  2.30100E-01  0.00000E+00  0.00000E+00  1.00000E-01
+  8.57000E-02  0.00000E+00  2.78300E-01  1.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  6.60000E-02  0.00000E+00  1.53800E-01  1.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  2.56100E-01  0.00000E+00  2.39500E-01  2.91300E-01
+  0.00000E+00  1.00000E-01  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  2.91300E-01  0.00000E+00  0.00000E+00  1.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  1.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  1.00000E+00  8.57000E-02  0.00000E+00  3.79300E-01
+  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+
+ Zero order transfer function deformation parameters
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+ halt
+  
+ %%---------------------------------------------------------------------------------------------------------------
+  
+ %% Dynamics - input vector
+  
+ inputs 1 6 1 % Steering
+ % inputs 2 14 1 % Leaning
+ inputs 3 16 1 % Rider leaning
+ inputs 4 11 1 % Propulsion
+  
+ %% Dynamics - output vector
+  
+ outep 1 11 1 % Propulsion
+ oute 2 6 1 % Steering
+ oute 3 14 1 % Leaning
+ oute 4 16 1 % Rider leaning
+ outx 5 14 1 % x-coordinate
+ outx 6 14 2 % y-coordinate
+  
+ end

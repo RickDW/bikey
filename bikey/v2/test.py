@@ -5,18 +5,13 @@ import socket
 import multiprocessing as mp
 import os
 import numpy as np
-
-
-# only settings supported by SpacarEnv.change_settings will have an effect
-# TODO: make all of these options arguments of the __init__ function
-_default_sim_config = {
-    "spacar_file": "bicycle.dat",
-    "output_sbd": False,
-    "use_spadraw": False
-}
+import json
 
 
 class SpacarEnv(gym.Env):
+    _message_terminator = b'\n'
+    _encoding = 'utf-8'
+
     def __init__(self, simulink_file, spacar_file, working_dir = os.getcwd(),
                  template_dir = None, copy_simulink = False, copy_spacar =
                  False, first_action = np.zeros((3,)), output_sbd = False,
@@ -49,15 +44,17 @@ class SpacarEnv(gym.Env):
         events = (None,)  # TODO add threading.Events for communication
 
         # start a process in which matlab will run
-        self.process = mp.Process(target = matlab_handler,
-                                  args = (config, port, events))
-        self.process.start()
-        print("Matlab process launched")
+        # self.process = mp.Process(target = matlab_handler,
+        #                           args = (config, port, events))
+        # self.process.start()
+        # print("Matlab process launched")
 
     def reset(self):
         client, address = self.server.accept()
+        print("Connected to matlab tcp client")
         # TODO close communications and notify process of new simulation
         self.client = client
+        self.read_buffer = b''
 
         self.x = 0
 
@@ -67,9 +64,11 @@ class SpacarEnv(gym.Env):
 
     def step(self, action):
         # TODO
+        print("Waiting for a message")
         message = self._receive_message()
+        print("Message received in step:", message)
 
-        self._send_message("placeholder")
+        self._send_message([0, 0, 0])
 
         return None, 0, False, {}
 
@@ -78,19 +77,38 @@ class SpacarEnv(gym.Env):
         print("Server socket closed")
         print(f"Sent {self.x} messages since last reset")
 
-        self.process.join()
+        # self.process.join()
         print("Process is dead")
 
     def _receive_message(self):
-        pass  # TODO
+        while not self._message_terminator in self.read_buffer:
+            data = self.client.recv(1024)
+
+            if not data:
+                print("Connection to matlab was broken")
+                return
+                # TODO: handle broken connection
+
+            self.read_buffer += self.client.recv(1024)
+            print("In the buffer:", self.read_buffer)
+
+        raw_message, self.read_buffer = self.read_buffer.split(
+            self._message_terminator, maxsplit = 1)
+
+        message = json.loads(raw_message.decode(self._encoding))
+
+        # TODO numpyify any arrays?
+
+        return message
 
     def _send_message(self, message):
-        pass  # TODO
+        self.client.sendall(json.dumps(message).encode(self._encoding)
+                            + self._message_terminator)
 
 
 if __name__ == '__main__':
     env = SpacarEnv(
-        'inputtest.slx',
+        'icttest.slx',
         'bicycle.dat',
         copy_simulink = True,
         copy_spacar = True,
@@ -99,9 +117,11 @@ if __name__ == '__main__':
     env.reset()
 
     while True:
-        data = env.client.recv(1024)
-        if not data:
-            break
+        msg = env._receive_message()
 
-        env.client.sendall('129\n'.encode('utf-8'))
-        env.x += 1
+        print("Message received:")
+        print(msg)
+
+        input("Press enter to send response")
+
+        env._send_message([0, 0, 0])
