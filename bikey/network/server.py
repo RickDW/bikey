@@ -168,6 +168,13 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
 
 def main():
     arguments = parse_cli_args()
+
+    print("Starting an environment server:")
+    print(f"Host: {arguments[0]}")
+    print(f"Port: {arguments[1]}")
+    print(f"Directory: {arguments[2]}")
+    print(f"Max. connections: {arguments[3]}")
+
     start_server(*arguments)
 
     print("End of server.py")
