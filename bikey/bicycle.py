@@ -94,9 +94,9 @@ class BicycleEnv(SpacarEnv):
 
         # limits / at what point should the episode terminate?
         deg_to_rad = 2 * pi / 360
-        leaning_limit = 30 * deg_to_rad  # leaning angle of bicycle
-        steering_limit = 50 * deg_to_rad  # steering angle
-        ub_leaning_limit = 30 * deg_to_rad  # leaning angle of upper body
+        leaning_limit = 20 * deg_to_rad  # leaning angle of bicycle
+        steering_limit = 40 * deg_to_rad  # steering angle
+        ub_leaning_limit = 20 * deg_to_rad  # leaning angle of upper body
 
         self.limits = \
             np.array([steering_limit, leaning_limit, ub_leaning_limit])
