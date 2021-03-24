@@ -1,4 +1,9 @@
-# \[WIP\] Python package for simulation-based reinforcement learning environments.
+# Python package for simulation-based reinforcement learning environments.
+
+**This package is unfinished: it contains bugs and its functionality is only 
+partially implemented. It is no longer being worked on.**
+
+If you are using or improving this package I would love to hear about it.
 
 This package contains custom OpenAI Gym environments that can interface with a
 [Spacar](http://spacar.nl/spacar) simulation. Spacar is a software package for
@@ -6,8 +11,6 @@ This package contains custom OpenAI Gym environments that can interface with a
 software is currently being developed by the Faculty of Engineering Technology
 at the University of Twente. With these environments, controllers can be
 created using reinforcement learning (RL).
-
-**This package is still in development and is constantly changing.**
 
 ## Installation instructions
 To install this Python package, use Python's pip tool:
