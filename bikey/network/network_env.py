@@ -120,7 +120,7 @@ class NetworkEnv(gym.Env):
         """
         self.socket.close()
 
-    def _send_command(self, command, data = None):
+    def _send_command(self, command, data=None):
         """
         Utility function used to send commands to the server.
 
@@ -185,19 +185,18 @@ def dict_to_gym_space(description):
     """
     if description['space'] == 'gym.spaces.Box':
         return gym.spaces.Box(
-            low = np.array(description['low']),
-            high = np.array(description['high']),
-            shape = description['shape'],
-            dtype = description['dtype']
+            low=np.array(description['low']),
+            high=np.array(description['high']),
+            shape=description['shape'],
+            dtype=description['dtype']
         )
-    
+
     elif description['space'] == 'gym.spaces.Discrete':
         return gym.spaces.Discrete(description['n'])
 
     else:
         raise TypeError(f"NetworkEnv only supports gym.spaces.Box, not\
                         '{description['space']}'")
-
 
 # gym.envs.register(
 #     id = "NetworkEnv-v0",

@@ -6,12 +6,17 @@ import os
 import argparse
 import time
 from queue import Full
+import socket
+import json
+
+_delimiter = b'<END>'
+_encoding = 'utf-8'
 
 
-def parse_cli_args(host = '127.0.0.1', port = 65432, directory = os.getcwd(),
-                   max_connections = 10):
+def parse_cli_args(host='127.0.0.1', port=65432, directory=os.getcwd(),
+                   max_connections=10):
     """
-    Parses server options from the command line with given defaults.
+    Parse CLI arguments used to manage an environment server.
 
     Arguments:
     host -- The default host interface of the server.
@@ -20,28 +25,70 @@ def parse_cli_args(host = '127.0.0.1', port = 65432, directory = os.getcwd(),
     max_connections -- The default maximum number of simultaneous connections.
     """
     parser = argparse.ArgumentParser(
-        description='Start a RL environment server',
+        description='Start or stop an environment server.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+    parser.add_argument('-s', '--stop',
+                        help='if specified, it will shut down the server instead of starting it',
+                        action='store_true')
     parser.add_argument('-H', '--host',
-                        help = 'the host on which the server can be reached',
-                        default = host)
+                        help='the host address of the server',
+                        default=host)
     parser.add_argument('-p', '--port',
-                        help = 'the port on which the server will listen',
-                        default = port,
-                        type = int)
+                        help='the port of the server',
+                        default=port,
+                        type=int)
     parser.add_argument('-d', '--directory',
-                        help = 'the directory where the server will \
+                        help='the directory where the server will \
                                     store any files',
-                        default = directory)
+                        default=directory)
     parser.add_argument('-c', '--max_connections',
-                        help = 'the maximum number of simultaneous connections',
-                        default = max_connections,
-                        type = int)
+                        help='the maximum number of simultaneous connections',
+                        default=max_connections,
+                        type=int)
 
     args = parser.parse_args()
 
-    return args.host, args.port, args.directory, args.max_connections
+    return args
+
+
+def send_shutdown_command(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+
+            message = json.dumps({'command': 'shut_down_server'})
+
+            s.sendall(message.encode(_encoding) + _delimiter)
+
+            data = s.recv(1024)
+
+            if not data:
+                # connection is broken, as expected
+                print("Connection was broken as expected")
+
+            else:
+                print("Error: server has sent a message instead of disconnecting")
+
+    except ConnectionRefusedError:
+        print("Could not connect to server")
+        return
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # the main server thread could be blocking due to a call to accept()
+            # by connecting one more time it snaps out of this, but due to the
+            # stop_server Event being set it will not go back to blocking with
+            # accept() ==> it shuts down
+            s.connect((host, port))
+            print("Ding dong ditching the server")
+
+    except ConnectionRefusedError:
+        print("Connection could not be established, server must already have \
+              shut down")
+        return
+
+    print("Server should have shut down soon")
 
 
 def display_connections(connections):
@@ -77,11 +124,11 @@ def setup_name_queue(server_dir):
         directory for their environment, if needed
     """
     N = 10
-    name_queue = mp.Queue(maxsize = N)
+    name_queue = mp.Queue(maxsize=N)
     stop_dir_generator = threading.Event()
 
-    thread = threading.Thread(target = provide_names,
-                              args = (server_dir, name_queue, N,
+    thread = threading.Thread(target=provide_names,
+                              args=(server_dir, name_queue, N,
                                     stop_dir_generator))
 
     thread.start()
