@@ -26,9 +26,9 @@ _default_sim_config = {
 
 
 class SpacarEnv(gym.Env):
-    def __init__(self, simulink_file, working_dir = os.getcwd(), template_dir =
-                 None, copy_simulink = False, copy_spacar = False,
-                 simulink_config = _default_sim_config, matlab_params =
+    def __init__(self, simulink_file, working_dir=os.getcwd(), template_dir=
+                 None, copy_simulink=False, copy_spacar=False,
+                 simulink_config=_default_sim_config, matlab_params=
                  '-desktop'):
         """
         This environment wraps a general physics simulation running in Spacar.
@@ -86,7 +86,7 @@ class SpacarEnv(gym.Env):
         self.working_dir = working_dir
 
         # disable matlab's notification sound
-        self.session.eval('beep off', nargout = 0)
+        self.session.eval('beep off', nargout=0)
 
         if template_dir is not None:
             # set the template directory
@@ -204,7 +204,7 @@ class SpacarEnv(gym.Env):
             # set the action that is performed once when the env is reset
             str_repr = str(conf["initial_action"].flatten())
             self.session.set_param(
-                f"{self.model_name}/actions", 'value', str_repr, nargout = 0)
+                f"{self.model_name}/actions", 'value', str_repr, nargout=0)
 
         if "spacar_file" in conf:
             # point spacar towards the correct model definition
@@ -212,7 +212,7 @@ class SpacarEnv(gym.Env):
             spacar_file = conf["spacar_file"][:-4]
             self.session.set_param(
                 f"{self.model_name}/spacar", 'filename', f"'{spacar_file}'",
-                nargout = 0)
+                nargout=0)
 
         convert = lambda boolean: 'on' if boolean else 'off'
 
@@ -221,14 +221,14 @@ class SpacarEnv(gym.Env):
             # turn on/off .sbd output (used for making movies of episodes)
             self.session.set_param(
                 f"{self.model_name}/spacar", "output_sbd",
-                convert(output_sbd), nargout = 0)
+                convert(output_sbd), nargout=0)
 
         if "use_spadraw" in conf:
             use_spadraw = conf["use_spadraw"]
             # turn on/off visualization during episodes
             self.session.set_param(
                 f"{self.model_name}/spacar", "use_spadraw",
-                convert(use_spadraw), nargout = 0)
+                convert(use_spadraw), nargout=0)
 
     def close(self):
         """
