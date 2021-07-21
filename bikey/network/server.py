@@ -7,6 +7,7 @@ import threading
 from . import server_utils
 from .env_process import run_environment
 
+
 _delimiter = b'<END>'
 _encoding = 'utf-8'
 
@@ -16,15 +17,19 @@ def start_server(host, port, server_dir, max_connections):
     Start an environment server on the specified interface and port.
 
     As long as the number of connections is below the connections limit,
-    any incoming connections will be given their own thread. These threads in
-    turn will spawn a process that will run the environment. This way any
-    CPU-bound computations do not block the server's connections.
+    any incoming connections will be accepted. Each connection is given a
+    separate thread, and a process in which the environment can execute
+    unimpeded. This way, any CPU-bound computations do not block the server's
+    connections either.
 
     Arguments:
     host -- The interface to listen on
     port -- The port to listen on
-    server_dir -- The directory where the server can store its files
-    connections -- The maximum number of simultaneous connections
+    server_dir -- The directory where the server can store its files (this is
+        only used with SpacarEnv's)
+    max_connections -- The maximum number of simultaneous connections. This is
+        useful when one environment takes up a lot of resources, for example,
+        and having too many executing simultaneously would impact performance.
     """
     connections = []
 

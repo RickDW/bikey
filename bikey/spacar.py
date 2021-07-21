@@ -8,8 +8,8 @@ import os
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's
-# first this issue is prevented. The error that would occur is saved in the
-# ssl_error.txt file
+# first this issue is prevented. The error that occurs is saved in the
+# ssl_error.txt file in the repository.
 # A puzzling aspect of this is that importing matlab.engine in an interpreter
 # session works fine, but as soon as it is run in a script it produces the
 # error.
