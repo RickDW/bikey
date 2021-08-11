@@ -7,10 +7,10 @@ _template_dir = ""
 
 def copy_from_template_dir(filename, working_dir=os.getcwd()):
     """
-    Copies a file from the template directory to the given working directory.
+    Copy a file from the template directory to the given working directory.
 
     Args:
-    filename -- The name of the file to be copied.
+    filename -- The filename of the template to be copied.
     working_dir -- The directory where the file should be copied to.
     """
     src = os.path.join(find_template_dir(), filename)
@@ -21,7 +21,7 @@ def copy_from_template_dir(filename, working_dir=os.getcwd()):
 
 def set_template_dir(directory=None):
     """
-    Overrides the default template directory that comes with bikey.
+    Override the default template directory that comes with bikey.
 
     Arguments:
     dir -- the custom template directory. If None the default template
@@ -37,15 +37,15 @@ def set_template_dir(directory=None):
 
 def find_template_dir():
     """
-    Finds the bikey template directory.
+    Find the template directory where bikey stores Spacar and Simulink templates.
 
     Returns:
-    A string describing the path of the template directory.
+    The path of the template directory.
     """
     if _custom_template_dir:
         # return the file path specified by user
         return _template_dir
     else:
-        # find the directory where util.py is located
+        # find the directory where utils.py is located
         package_dir = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(package_dir, "templates")
+        return os.path.join(package_dir, "spacar_templates")

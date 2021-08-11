@@ -4,9 +4,7 @@ import time
 import multiprocessing as mp
 import threading
 
-
-from .server_utils import parse_cli_args, setup_name_queue, \
-    display_connections, numpyify, denumpyify
+from . import server_utils
 from .env_process import run_environment
 
 
@@ -19,19 +17,23 @@ def start_server(host, port, server_dir, max_connections):
     Start an environment server on the specified interface and port.
 
     As long as the number of connections is below the connections limit,
-    any incoming connections will be given their own thread. These threads in
-    turn will spawn a process that will run the environment. This way any
-    CPU-bound computations do not block the server's connections.
+    any incoming connections will be accepted. Each connection is given a
+    separate thread, and a process in which the environment can execute
+    unimpeded. This way, any CPU-bound computations do not block the server's
+    connections either.
 
     Arguments:
     host -- The interface to listen on
     port -- The port to listen on
-    server_dir -- The directory where the server can store its files
-    connections -- The maximum number of simultaneous connections
+    server_dir -- The directory where the server can store its files (this is
+        only used with SpacarEnv's)
+    max_connections -- The maximum number of simultaneous connections. This is
+        useful when one environment takes up a lot of resources, for example,
+        and having too many executing simultaneously would impact performance.
     """
     connections = []
 
-    dir_thread, stop_dir_generator, name_queue = setup_name_queue(server_dir)
+    dir_thread, stop_dir_generator, name_queue = server_utils.setup_name_queue(server_dir)
     stop_server = threading.Event()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -43,7 +45,7 @@ def start_server(host, port, server_dir, max_connections):
             connections = [(a, t) for a, t in connections if t.is_alive()]
 
             # display all connections
-            display_connections(connections)
+            server_utils.display_connections(connections)
 
             if len(connections) <= max_connections:
                 print("Waiting for new connection")
@@ -54,9 +56,9 @@ def start_server(host, port, server_dir, max_connections):
                 # determine if the client is running on this machine as well
                 from_server = host == addr[0]
 
-                thread = threading.Thread(target = handle_client,
-                                          args = (client_socket, from_server,
-                                                  stop_server, name_queue))
+                thread = threading.Thread(target=handle_client,
+                                          args=(client_socket, from_server,
+                                                stop_server, name_queue))
                 connections.append((addr, thread))
                 thread.start()
 
@@ -100,8 +102,8 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
     response_queue = mp.Queue()
 
     env_process = mp.Process(
-        target = run_environment,
-        args = (message_queue, response_queue, name_queue))
+        target=run_environment,
+        args=(message_queue, response_queue, name_queue))
 
     env_process.start()
 
@@ -125,7 +127,7 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
                         read_buffer.split(_delimiter, maxsplit=1)
                     message = json.loads(raw_message.decode(_encoding))
                     # make sure observations are turned into numpy arrays
-                    numpyify(message)
+                    server_utils.numpyify(message)
                     # print('Received new message: ', message)
 
                     message_queue.put(message)
@@ -147,7 +149,7 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
 
                     # make sure observations are turned into lists before being
                     # turned into json
-                    denumpyify(response)
+                    server_utils.denumpyify(response)
                     client_socket.sendall(
                         json.dumps(response).encode(_encoding) + _delimiter)
 
@@ -167,8 +169,23 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
 
 
 def main():
-    arguments = parse_cli_args()
-    start_server(*arguments)
+    args = server_utils.parse_cli_args()
+
+    print("The environment server that is being accessed is specified as:")
+    print(f"\t- Host: {args.host}")
+    print(f"\t- Port: {args.port}")
+    print()
+
+    if args.stop:
+        print("This server will now be shut down.")
+        server_utils.send_shutdown_command(args.host, args.port)
+
+    else:
+        print("An environment server will be started with the following properties:\n")
+        print(f"\t- Directory: {args.directory}")
+        print(f"\t- Max. connections: {args.max_connections}")
+
+        start_server(args.host, args.port, args.directory, args.max_connections)
 
     print("End of server.py")
 
