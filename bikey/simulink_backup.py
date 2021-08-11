@@ -15,15 +15,19 @@ import bikey.utils
 
 # TODO: update all documentation after refactoring
 
+# only settings supported by SimulinkEnv.change_settings will have an effect
+_default_sim_config = {
+    "initial_action": np.zeros((3,)),
+    "spacar_file": "bicycle.dat",
+    "output_sbd": False, # TODO ?
+    "use_spadraw": False # TODO ?
+}
 
 class SimulinkEnv(gym.Env):
-    def __init__(self, 
-            simulink_file: str,
-            initial_action: np.array,
-            working_dir: str = os.getcwd(),
-            copy_simulink: bool = False,
-            template_dir: str = None,
-            matlab_params: str = '-desktop'):
+    def __init__(self, simulink_file, working_dir=os.getcwd(), template_dir=
+                 None, copy_simulink=False, copy_spacar=False,
+                 simulink_config=_default_sim_config, matlab_params=
+                 '-desktop'):
         """
         This environment interfaces with a Simulink simulation.
 
@@ -73,66 +77,37 @@ class SimulinkEnv(gym.Env):
         # TODO: having a matlab session for every environment may not be
         # efficient
 
-        if template_dir:
-            self.template_dir = template_dir
-        else:
-            self.template_dir = bikey.utils.standard_template_dir()
+        config = _default_sim_config.copy()
+        config.update(simulink_config)
+        self.simulink_config = config
 
-        # launch Matlab
         self.session = matlab.engine.start_matlab(matlab_params)
-        self.session_active = True
 
-        # set the working directory so Matlab will find the simulation files
+        # sets the working directory, allows matlab to find correct files
         self.session.cd(working_dir)
         self.working_dir = working_dir
 
-        # TODO: is this necessary?
         # disable matlab's notification sound
         self.session.eval('beep off', nargout=0)
 
-        if copy_simulink:
-            # create a copy of the specified template in the working dir
-            bikey.utils.copy_from_template_dir(
-                self.template_dir, simulink_file, working_dir)
+        if template_dir is not None:
+            # set the template directory
+            bikey.utils.set_template_dir(template_dir)
 
-        # TODO: see how this works
+        if copy_simulink:
+            # copy a simulink model template
+            bikey.utils.copy_from_template_dir(simulink_file, working_dir)
+
+        if copy_spacar:
+            # copy a spacar model
+            bikey.utils.copy_from_template_dir(simulink_config['spacar_file'],
+                                               working_dir)
+
         self.simulink_loaded = False
         self.model_name = simulink_file[:-4]  # remove the .slx extension
 
         # if simulink_loaded is True, done indicates the end of the episode
         self.done = False
-
-        self.initial_action = initial_action
-
-
-    def reset(self):
-        """
-        Ready a new Simulink simulation and return the initial observation.
-
-        Returns:
-        Initial observation of the system, as defined by get_observations()
-        """
-        # gracefully shutdown Simulink and clear the observations stored in the
-        # workspace
-        if self.simulink_loaded:
-            self.close_simulink()
-
-        # TODO: make simulink GUI an option of the environment
-        # open the simulink model
-        self.session.open_system(self.model_name, nargout=0)
-        # self.sym_handle = self.session.load_system(self.model_name) # no GUI
-
-        self.simulink_loaded = True
-        self.done = False
-
-        # set the initial action before starting the simulation
-        self.update_matlab(self.initial_action)
-
-        self.send_sim_command('start')
-        # (sim will automatically be paused afte one step by the assert block)
-
-        return self.get_observations()
-
 
     def step(self, actions):
         """
@@ -151,12 +126,8 @@ class SimulinkEnv(gym.Env):
         - A boolean describing whether the end of the episode has been reached
         - General information for this time step
         """
-        
-        if not self.simulink_loaded:
-            raise RuntimeError("Simulink is not loaded; cannot step through env")
-
-        if self.done:
-            raise RuntimeError("The episode has terminated; cannot step through env")
+        if not self.simulink_loaded or self.done:
+            return None  # TODO: throw an error instead of returning None
 
         if self.get_sim_status() == 'paused':
             # TODO: add safeguards that prevent updating action inputs before
@@ -178,7 +149,7 @@ class SimulinkEnv(gym.Env):
                 info[eer] = "end_of_sim"
                 self.done = True
 
-            # TODO: allow subclasses to implement their own logic here
+            # allow subclasses to implement their own logic here
             if done:
                 if eer in info:
                     info[eer] += "/end_of_epi"
@@ -190,6 +161,72 @@ class SimulinkEnv(gym.Env):
 
             return observations, reward, self.done, info
 
+    def reset(self):
+        """
+        Makes a new Simulink simulation available and returns the initial
+        observations.
+
+        Returns:
+        Initial observations of the system, as defined by get_observations().
+        """
+        # Gracefully shutdown Simulink and clear the observations stored in the
+        # workspace
+        if self.simulink_loaded:
+            self.close_simulink()
+
+        # TODO: make simulink GUI an option of the environment
+        # open the simulink model
+        self.session.open_system(self.model_name, nargout=0)
+        # self.sym_handle = self.session.load_system(self.model_name) # no GUI
+        self.simulink_loaded = True
+
+        self.done = False
+
+        # make sure the simulation file is set up correctly
+        self.change_settings()
+
+        self.send_sim_command('start')
+        # (sim will automatically be paused afte one step by the assert block)
+
+        return self.get_observations()
+
+    def change_settings(self):
+        """
+        Makes requested changes to the opened Simulink file.
+
+        Requires the Simulink file to be loaded.
+        """
+        conf = self.simulink_config
+
+        if "initial_action" in conf:
+            # set the action that is performed once when the env is reset
+            str_repr = str(conf["initial_action"].flatten())
+            self.session.set_param(
+                f"{self.model_name}/actions", 'value', str_repr, nargout=0)
+
+        if "spacar_file" in conf:
+            # point spacar towards the correct model definition
+            # (and remove the .dat file extension)
+            spacar_file = conf["spacar_file"][:-4]
+            self.session.set_param(
+                f"{self.model_name}/spacar", 'filename', f"'{spacar_file}'",
+                nargout=0)
+
+        convert = lambda boolean: 'on' if boolean else 'off'
+
+        if "output_sbd" in conf:
+            output_sbd = conf["output_sbd"]
+            # turn on/off .sbd output (used for making movies of episodes)
+            self.session.set_param(
+                f"{self.model_name}/spacar", "output_sbd",
+                convert(output_sbd), nargout=0)
+
+        if "use_spadraw" in conf:
+            use_spadraw = conf["use_spadraw"]
+            # turn on/off visualization during episodes
+            self.session.set_param(
+                f"{self.model_name}/spacar", "use_spadraw",
+                convert(use_spadraw), nargout=0)
 
     def close(self):
         """
@@ -198,12 +235,8 @@ class SimulinkEnv(gym.Env):
         if self.simulink_loaded:
             self.close_simulink()
 
-        if self.session_active:
-            # close matlab
-            self.session.quit()
-
-            self.session_active = False
-
+        # close matlab
+        self.session.quit()
 
     def close_simulink(self):
         """
@@ -213,7 +246,6 @@ class SimulinkEnv(gym.Env):
         an env.reset(), but not after env.close() or env.close_simulink().
         However this will only display a warning message if this is ignored.
         """
-
         # simulink cannot be closed while simulation is running, so stop it
         self.send_sim_command('stop')
 
@@ -226,12 +258,11 @@ class SimulinkEnv(gym.Env):
         # self.session.close_system(self.model_name, 0, nargout=0)
         # gives another error
 
-        # remove old observations stored in the workspace (variable 'out')
+        # remove observations stored in the workspace (variable 'out')
         self.session.clear('out', nargout=0)
 
-        # register simulink as no longer being available
+        # register simulink no longer being available
         self.simulink_loaded = False
-
 
     def update_matlab(self, actions):
         """
@@ -256,7 +287,6 @@ class SimulinkEnv(gym.Env):
             f'{self.model_name}/simulation_time_python', 'value',
             str(simulation_time_matlab), nargout=0)
 
-
     def send_sim_command(self, command):
         """
         Sends a command to the Simulink simulation, if it is loaded.
@@ -270,10 +300,6 @@ class SimulinkEnv(gym.Env):
             self.session.set_param(
                 self.model_name, 'SimulationCommand', command, nargout=0)
 
-        else:
-            raise RuntimeError("Cannot send a command to Simulink when it isn't loaded")
-
-
     def get_observations(self):
         """
         Returns the output of the current simulation step.
@@ -284,15 +310,10 @@ class SimulinkEnv(gym.Env):
         A numpy array with shape conforming to the defined observation space,
         or None if the simulation has not been started.
         """
-        if not self.simulink_loaded:
-            raise RuntimeError("Cannot obtain observation when Simulink isn't loaded")
-
         if self.session.exist('out'):
             return np.array(self.session.eval('out.observations')).flatten()
-
         else:
-            raise ValueError("Variable 'out' does not exist in the Matlab workspace")
-
+            return None
 
     def get_sim_status(self):
         """
@@ -303,11 +324,9 @@ class SimulinkEnv(gym.Env):
         values consult Matlab's documentation: the command you are looking for
         is get_param(..., 'SimulationStatus')
         """
-        if not self.simulink_loaded:
-            raise RuntimeError("Cannot obtain simulation status when Simulink isn't loaded.")
-
+        # TODO: throw an error if simulink is not loaded
+        # TODO: also throw an error if matlab is no longer active
         return self.session.get_param(self.model_name, 'SimulationStatus')
-
 
     def process_step(self, observations):
         """
@@ -323,7 +342,6 @@ class SimulinkEnv(gym.Env):
         Returns:
         A tuple structured the same way the output of step() is.
         """
-        # TODO: make this an abstract method / raise unimplemented error?
         reward = 0
         done = False
         info = {}
