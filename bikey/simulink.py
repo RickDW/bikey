@@ -15,22 +15,21 @@ import bikey.utils
 
 # TODO: update all documentation after refactoring
 
-# only settings supported by SpacarEnv.change_settings will have an effect
+# only settings supported by SimulinkEnv.change_settings will have an effect
 _default_sim_config = {
     "initial_action": np.zeros((3,)),
     "spacar_file": "bicycle.dat",
-    "output_sbd": False,
-    "use_spadraw": False
+    "output_sbd": False, # TODO ?
+    "use_spadraw": False # TODO ?
 }
 
-
-class SpacarEnv(gym.Env):
+class SimulinkEnv(gym.Env):
     def __init__(self, simulink_file, working_dir=os.getcwd(), template_dir=
                  None, copy_simulink=False, copy_spacar=False,
                  simulink_config=_default_sim_config, matlab_params=
                  '-desktop'):
         """
-        This environment wraps a general physics simulation running in Spacar.
+        This environment interfaces with a Simulink simulation.
 
         The simulation as seen by Simulink is defined in simulink_file. If
         template_dir is not None this will be set as the global template
@@ -78,6 +77,10 @@ class SpacarEnv(gym.Env):
         # TODO: having a matlab session for every environment may not be
         # efficient
 
+        config = _default_sim_config.copy()
+        config.update(simulink_config)
+        self.simulink_config = config
+
         self.session = matlab.engine.start_matlab(matlab_params)
 
         # sets the working directory, allows matlab to find correct files
@@ -102,10 +105,6 @@ class SpacarEnv(gym.Env):
 
         self.simulink_loaded = False
         self.model_name = simulink_file[:-4]  # remove the .slx extension
-
-        config = _default_sim_config.copy()
-        config.update(simulink_config)
-        self.simulink_config = config
 
         # if simulink_loaded is True, done indicates the end of the episode
         self.done = False

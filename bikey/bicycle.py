@@ -1,5 +1,5 @@
 import gym
-from bikey.spacar import SpacarEnv
+from bikey.simulink import SimulinkEnv
 from math import inf, pi
 import numpy as np
 import os
@@ -34,7 +34,7 @@ _default_sim_config = {
 }
 
 
-class BicycleEnv(SpacarEnv):
+class BicycleEnv(SimulinkEnv):
     def __init__(self, simulink_file, working_dir=os.getcwd(), template_dir=
                  None, copy_simulink=False, copy_spacar=False,
                  simulink_config=_default_sim_config, matlab_params=

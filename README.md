@@ -29,8 +29,7 @@ pip install .
 ```
 
 The standard pip options are available, e.g. the -e option allows you to edit
-the package after it is installed (both templates and code), without having to
-install it again:
+bikey's code and templates without having to reinstall.
 
 ```
 pip install -e .
@@ -45,8 +44,8 @@ final package that is needed is the Matlab Engine. Please refer to the
 for installation instructions.
 
 ## Usage
-The two main components of this package are the SpacarEnv and BicycleEnv
-classes. SpacarEnv is not a full gym environment, therefore only BicycleEnv
+The two main components of this package are the SimulinkEnv and BicycleEnv
+classes. SimulinkEnv is not a full gym environment, therefore only BicycleEnv
 is registered as an environment.
 
 To create an environment instance, import the module that defines the bicycle
@@ -117,7 +116,7 @@ address and port of a running server: they should be provided to the script.
 
 ## Custom Simulink environments (work in progress)
 This package makes creating your own Simulink environments as easy as possible.
-All you need to do is subclass bikey.spacar.SpacarEnv, override the
+All you need to do is subclass bikey.simulink.SimulinkEnv, override the
 process_step() function with the code for your own environment, and set up 
 the correct observation and action spaces. The process_step() function defines
 the rules of the environment: it determines rewards, when to end an episode,

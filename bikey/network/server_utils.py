@@ -12,6 +12,7 @@ import json
 
 import gym
 
+
 _delimiter = b'<END>'
 _encoding = 'utf-8'
 
