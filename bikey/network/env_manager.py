@@ -1,11 +1,12 @@
-import gym
-import bikey.bicycle
 import os
+import gym
+import bikey.bicycle # adds the bicycle env to gym registry, do not remove import
+from bikey.network.server_utils import gym_space_to_dict
 
 
-def run_environment(message_queue, response_queue, name_queue):
+def manage_environment(message_queue, response_queue, name_queue):
     """
-    Sets up an environment and controls it.
+    Create and manage an environment.
 
     The code in this function should always run in its own process, so
     CPU-bound code does not block the server. Queues are used to communicate
@@ -122,37 +123,3 @@ def run_environment(message_queue, response_queue, name_queue):
             # do not forget to put an item on the response queue, or the thread
             # will block, and so will everything else
             pass
-
-
-def gym_space_to_dict(space):
-    """
-    Writes the properties of an observation or action space to a dictionary.
-
-    This can be sent across a network using JSON, to allow the space to be
-    reconstructed on a different machine. For now this method only supports
-    gym.spaces.Box and gym.spaces.Discrete.
-
-    Arguments:
-    space -- The observation or action space to be described.
-
-    Returns:
-    A dictionary containing properties of a gym space, i.e. the type of space,
-    upper and lower bounds, shape, and data type.
-    """
-    if type(space) is gym.spaces.Box:
-        return {
-            'space': 'gym.spaces.Box',
-            'low': space.low.tolist(),
-            'high': space.high.tolist(),
-            'shape': space.shape,
-            'dtype': str(space.dtype)
-        }
-    elif type(space) is gym.spaces.Discrete:
-        return {
-            'space': 'gym.spaces.Discrete',
-            'n': space.n
-        }
-    else:
-        # not supported
-        raise TypeError("Cannot convert anything but the gym.spaces.Box space\
-                        to JSON")

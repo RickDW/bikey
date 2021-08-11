@@ -4,12 +4,12 @@ import time
 import multiprocessing as mp
 import threading
 
-from . import server_utils
-from .env_process import run_environment
+from bikey.network import server_utils
+from bikey.network.env_manager import manage_environment
 
 
-_delimiter = b'<END>'
-_encoding = 'utf-8'
+_delimiter = b'<END>' # message delimiter
+_encoding = 'utf-8' # message encoding
 
 
 def start_server(host, port, server_dir, max_connections):
@@ -87,7 +87,7 @@ def start_server(host, port, server_dir, max_connections):
 
 def handle_client(client_socket, from_server, stop_server, name_queue):
     """
-    Handles all communications with clients of the server in its own thread.
+    Handles all client communications (should be run in its own thread)
 
     Arguments:
     client_socket -- The socket associated with the connection.
@@ -102,7 +102,7 @@ def handle_client(client_socket, from_server, stop_server, name_queue):
     response_queue = mp.Queue()
 
     env_process = mp.Process(
-        target=run_environment,
+        target=manage_environment,
         args=(message_queue, response_queue, name_queue))
 
     env_process.start()

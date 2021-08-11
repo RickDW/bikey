@@ -1,10 +1,9 @@
 import ssl  # TODO: make this optional on windows? see note below
 import matlab.engine
-
 import gym
-import bikey.utils
 import numpy as np
 import os
+import bikey.utils
 
 # The ssl library only needs to be imported on linux. Apparently the system's
 # 'libssl.so' and the one shipped with matlab clash. By loading the system's

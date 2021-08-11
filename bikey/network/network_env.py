@@ -2,30 +2,29 @@ import gym
 import socket
 import json
 import numpy as np
+from bikey.network.server_utils import dict_to_gym_space, _delimiter, _encoding
 
 
 class NetworkEnv(gym.Env):
     """
-    Controls another OpenAI gym environment over the internet.
+    Controls another gym environment over the internet.
 
     This environment connects to an environment server that can be located
-    anywhere on a network as long as it is reachable. It then exposes the
-    standard commands reset(), step(), and close() that allow you to control
-    the environment on the server.
+    anywhere on a network. It exposes the standard commands reset(), step(),
+    and close() that allow you to control the environment.
 
     WARNING: The current iteration of the NetworkEnv does NOT have any kind of
     encryption or authentication, be careful with the data that you send across
-    the network. If this project continues, this will change in a future
-    version.
+    the network.
 
     The communication is performed on a TCP connection, and data is transmitted
-    in JSON form. Messages are delimited using the '<END>' token, meaning this
+    in JSON form. Messages are delimited using the _delimiter token, meaning this
     token should not be part of any of the data you send. At the moment the
     actions and observations are expected to be numpy arrays, this may change
     in a future version.
     """
-    _delimiter = b'<END>'
-    _encoding = 'utf-8'
+    _delimiter = _delimiter
+    _encoding = _encoding
     _read_buffer = b''
 
     def __init__(self, address, port, env_name, **env_config):
@@ -166,39 +165,7 @@ class NetworkEnv(gym.Env):
         return json.loads(response.decode('utf-8'))
 
 
-def dict_to_gym_space(description):
-    """
-    Reconstruct an observation or action space based on a description.
-
-    Currently only gym.spaces.Box and gym.spaces.Discrete are supported.
-
-    Arguments:
-    description -- A dictionary with the following attributes:
-        - space: e.g. 'gym.spaces.Box'
-        - low and high: the original space's low and high attributes
-        converted using np_array.tolist())
-        - shape: the shape property of the original space
-        - dtype: the data type of the original space
-
-    Returns:
-    An object that can be used as the observation or action space of an env
-    """
-    if description['space'] == 'gym.spaces.Box':
-        return gym.spaces.Box(
-            low=np.array(description['low']),
-            high=np.array(description['high']),
-            shape=description['shape'],
-            dtype=description['dtype']
-        )
-
-    elif description['space'] == 'gym.spaces.Discrete':
-        return gym.spaces.Discrete(description['n'])
-
-    else:
-        raise TypeError(f"NetworkEnv only supports gym.spaces.Box, not\
-                        '{description['space']}'")
-
-# gym.envs.register(
-#     id = "NetworkEnv-v0",
-#     entry_point = "bikey.network.network_env:NetworkEnv"
-# )
+gym.envs.register(
+    id = "NetworkEnv-v0",
+    entry_point = "bikey.network.network_env:NetworkEnv"
+)

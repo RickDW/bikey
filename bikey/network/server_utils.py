@@ -1,13 +1,16 @@
 import multiprocessing as mp
 import threading
+from queue import Full
+
+import socket
 import numpy as np
 import datetime
 import os
 import argparse
 import time
-from queue import Full
-import socket
 import json
+
+import gym
 
 _delimiter = b'<END>'
 _encoding = 'utf-8'
@@ -207,3 +210,70 @@ def denumpyify(message):
     if 'data' in message and 'observation' in message['data']:
         message['data']['observation'] = \
             message['data']['observation'].tolist()
+
+
+def gym_space_to_dict(space):
+    """
+    Writes the properties of an observation or action space to a dictionary.
+
+    This can be sent across a network using JSON, to allow the space to be
+    reconstructed on a different machine. For now this method only supports
+    gym.spaces.Box and gym.spaces.Discrete.
+
+    Arguments:
+    space -- The observation or action space to be described.
+
+    Returns:
+    A dictionary containing properties of a gym space, i.e. the type of space,
+    upper and lower bounds, shape, and data type.
+    """
+    if type(space) is gym.spaces.Box:
+        return {
+            'space': 'gym.spaces.Box',
+            'low': space.low.tolist(),
+            'high': space.high.tolist(),
+            'shape': space.shape,
+            'dtype': str(space.dtype)
+        }
+    elif type(space) is gym.spaces.Discrete:
+        return {
+            'space': 'gym.spaces.Discrete',
+            'n': space.n
+        }
+    else:
+        # not supported
+        raise TypeError("Cannot convert anything but the gym.spaces.Box space\
+                        to JSON")
+
+
+def dict_to_gym_space(description):
+    """
+    Reconstruct an observation or action space based on a description.
+
+    Currently only gym.spaces.Box and gym.spaces.Discrete are supported.
+
+    Arguments:
+    description -- A dictionary with the following attributes:
+        - space: e.g. 'gym.spaces.Box'
+        - low and high: the original space's low and high attributes
+        converted using np_array.tolist())
+        - shape: the shape property of the original space
+        - dtype: the data type of the original space
+
+    Returns:
+    An object that can be used as the observation or action space of an env
+    """
+    if description['space'] == 'gym.spaces.Box':
+        return gym.spaces.Box(
+            low=np.array(description['low']),
+            high=np.array(description['high']),
+            shape=description['shape'],
+            dtype=description['dtype']
+        )
+
+    elif description['space'] == 'gym.spaces.Discrete':
+        return gym.spaces.Discrete(description['n'])
+
+    else:
+        raise TypeError(f"NetworkEnv only supports gym.spaces.Box, not\
+                        '{description['space']}'")
