@@ -27,9 +27,16 @@ class SimulinkEnv(gym.Env):
         """
         This environment interfaces with a Simulink simulation.
 
-        The simulation as seen by Simulink is defined in simulink_file. If
-        template_dir is not None this will be set as the global template
-        directory.
+        The Simulink simulation that will be running is defined in
+        simulink_file. It should be located in working_dir, but it is also
+        possible to copy a template from a template directory. To use this copy
+        mechanism, set copy_simulink to True. By default, the template
+        directory in bikey's installation directory is used. This directory
+        contains a file with the basic template that is required for bikey's
+        interface to work. It is also possible to use your own template
+        directory by setting template_dir to its path.
+
+        The first action # TODO: figure out a way for the first action to not be specified in the constructor
 
         simulink_file should be located in the working_dir. However, if
         copy_simulink is True, then it will be copied from the template
@@ -67,9 +74,7 @@ class SimulinkEnv(gym.Env):
 
         super().__init__()
 
-        # TODO: check whether specified .slx and .dat files exist
-        # TODO: catch all potential errors caused by simulink simulation not
-        # yet being available
+        # TODO: check whether the specified .slx and .dat files exist
         # TODO: having a matlab session for every environment may not be
         # efficient
 
@@ -95,7 +100,6 @@ class SimulinkEnv(gym.Env):
             bikey.utils.copy_from_template_dir(
                 self.template_dir, simulink_file, working_dir)
 
-        # TODO: see how this works
         self.simulink_loaded = False
         self.model_name = simulink_file[:-4]  # remove the .slx extension
 
@@ -191,6 +195,103 @@ class SimulinkEnv(gym.Env):
             return observations, reward, self.done, info
 
 
+    def process_step(self, observations):
+        """
+        Placeholder function to be overwritten by subclass.
+
+        This function defines the rewards, when to end an episode, and what
+        general info is given out at every time step.
+
+        Arguments:
+        observations -- Observations of the current time step, as defined by
+            get_observations()
+
+        Returns:
+        A tuple structured the same way the output of step() is.
+        """
+        # TODO: make this an abstract method / raise unimplemented error?
+        reward = 0
+        done = False
+        info = {}
+        return reward, done, info
+
+
+    def update_matlab(self, actions):
+        """
+        Updates block contents in the Simulink simulation.
+
+        This function tells Simulink which actions are performed in the next
+        step, as well as the simulation time from Python's perspective. This
+        last step is crucial, since it keeps Python and Simulink synchronized.
+
+        Arguments:
+        actions -- A numpy array with shape conforming to the action space.
+        """
+        string_repr = str(actions.flatten())
+        self.session.set_param(
+            f'{self.model_name}/actions', 'value', string_repr, nargout=0)
+
+        # TODO remove this part of the synchronization mechanism, seems
+        # redundant
+        simulation_time_matlab = self.session.get_param(
+            self.model_name, 'SimulationTime')
+        self.session.set_param(
+            f'{self.model_name}/simulation_time_python', 'value',
+            str(simulation_time_matlab), nargout=0)
+
+
+    def get_observations(self):
+        """
+        Returns the output of the current simulation step.
+
+        Returns None if simulation has not yet been started.
+
+        Returns:
+        A numpy array with shape conforming to the defined observation space,
+        or None if the simulation has not been started.
+        """
+        if not self.simulink_loaded:
+            raise RuntimeError("Cannot obtain observation when Simulink isn't loaded")
+
+        if self.session.exist('out'):
+            return np.array(self.session.eval('out.observations')).flatten()
+
+        else:
+            raise ValueError("Variable 'out' does not exist in the Matlab workspace")
+
+
+    def get_sim_status(self):
+        """
+        Returns the status of the Simulink simulation, as reported by Matlab.
+
+        Returns:
+        A string describing the status of the Simulink simulation. For specific
+        values consult Matlab's documentation: the command you are looking for
+        is get_param(..., 'SimulationStatus')
+        """
+        if not self.simulink_loaded:
+            raise RuntimeError("Cannot obtain simulation status when Simulink isn't loaded.")
+
+        return self.session.get_param(self.model_name, 'SimulationStatus')
+
+
+    def send_sim_command(self, command):
+        """
+        Sends a command to the Simulink simulation, if it is loaded.
+
+        Arguments:
+        command -- A string containing the command. For documentation of
+            possible values consult the Matlab documentation. Examples are
+            'start', 'pause', 'continue', 'stop', and 'update'.
+        """
+        if self.simulink_loaded:
+            self.session.set_param(
+                self.model_name, 'SimulationCommand', command, nargout=0)
+
+        else:
+            raise RuntimeError("Cannot send a command to Simulink when it isn't loaded")
+
+
     def close(self):
         """
         Shutdown Simulink and Matlab.
@@ -231,100 +332,3 @@ class SimulinkEnv(gym.Env):
 
         # register simulink as no longer being available
         self.simulink_loaded = False
-
-
-    def update_matlab(self, actions):
-        """
-        Updates block contents in the Simulink simulation.
-
-        This function tells Simulink which actions are performed in the next
-        step, as well as the simulation time from Python's perspective. This
-        last step is crucial, since it keeps Python and Simulink synchronized.
-
-        Arguments:
-        actions -- A numpy array with shape conforming to the action space.
-        """
-        string_repr = str(actions.flatten())
-        self.session.set_param(
-            f'{self.model_name}/actions', 'value', string_repr, nargout=0)
-
-        # TODO remove this part of the synchronization mechanism, seems
-        # redundant
-        simulation_time_matlab = self.session.get_param(
-            self.model_name, 'SimulationTime')
-        self.session.set_param(
-            f'{self.model_name}/simulation_time_python', 'value',
-            str(simulation_time_matlab), nargout=0)
-
-
-    def send_sim_command(self, command):
-        """
-        Sends a command to the Simulink simulation, if it is loaded.
-
-        Arguments:
-        command -- A string containing the command. For documentation of
-            possible values consult the Matlab documentation. Examples are
-            'start', 'pause', 'continue', 'stop', and 'update'.
-        """
-        if self.simulink_loaded:
-            self.session.set_param(
-                self.model_name, 'SimulationCommand', command, nargout=0)
-
-        else:
-            raise RuntimeError("Cannot send a command to Simulink when it isn't loaded")
-
-
-    def get_observations(self):
-        """
-        Returns the output of the current simulation step.
-
-        Returns None if simulation has not yet been started.
-
-        Returns:
-        A numpy array with shape conforming to the defined observation space,
-        or None if the simulation has not been started.
-        """
-        if not self.simulink_loaded:
-            raise RuntimeError("Cannot obtain observation when Simulink isn't loaded")
-
-        if self.session.exist('out'):
-            return np.array(self.session.eval('out.observations')).flatten()
-
-        else:
-            raise ValueError("Variable 'out' does not exist in the Matlab workspace")
-
-
-    def get_sim_status(self):
-        """
-        Returns the status of the Simulink simulation, as reported by Matlab.
-
-        Returns:
-        A string describing the status of the Simulink simulation. For specific
-        values consult Matlab's documentation: the command you are looking for
-        is get_param(..., 'SimulationStatus')
-        """
-        if not self.simulink_loaded:
-            raise RuntimeError("Cannot obtain simulation status when Simulink isn't loaded.")
-
-        return self.session.get_param(self.model_name, 'SimulationStatus')
-
-
-    def process_step(self, observations):
-        """
-        Placeholder function to be overwritten by subclass.
-
-        This function defines the rewards, when to end an episode, and what
-        general info is given out at every time step.
-
-        Arguments:
-        observations -- Observations of the current time step, as defined by
-            get_observations()
-
-        Returns:
-        A tuple structured the same way the output of step() is.
-        """
-        # TODO: make this an abstract method / raise unimplemented error?
-        reward = 0
-        done = False
-        info = {}
-        return reward, done, info
