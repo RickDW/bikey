@@ -13,3 +13,7 @@ bikey/*.sbd
 *.egg-info/
 bikey/dist/
 bikey/build/
+
+# virtual environment
+venv/
+.python-version
