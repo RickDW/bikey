@@ -1,19 +1,23 @@
 # Python package for Simulink-based reinforcement learning environments.
 
+This package contains custom OpenAI Gym environments that can interface with a
+Simulink simulation running in Matlab. This can be a powerful combination as
+Simulink is often used in engineering fields. Anyone who has experience with
+creating Simulink simulations can easily create brand new environments without
+learning anything new. At the same time, you can keep using the reinforcement
+learning libraries that you are familiar with using in Python.
+
+As a final note, this package was meant to be used with [Spacar](http://spacar.nl/spacar)
+simulations, which can be run inside Simulink. Spacar is a software package for
+the dynamic modelling and control of flexible multibody systems". The software
+is currently being developed by the Faculty of Engineering Technology at the
+University of Twente.
+
 **This package is not 100% finished. There is a bug that is likely caused by
 Spacar. However, Spacar is supposed to be completely optional, and the code
 should run fine without it. I want to refactor the code so it is more suited
-for Simulink files without Spacar dependencies. I am unsure when this will be
-finished, but I am aiming for sometime in the next two months.**
-
-If you are using or improving this package I would love to hear about it.
-
-This package contains custom OpenAI Gym environments that can interface with a
-[Spacar](http://spacar.nl/spacar) simulation. Spacar is a software package for
-"the dynamic modelling and control of flexible multibody systems". The
-software is currently being developed by the Faculty of Engineering Technology
-at the University of Twente. With these environments, controllers can be
-created using reinforcement learning (RL).
+for use without Spacar, however I am unsure when this will be
+finished. I am aiming for sometime in the next two months.**
 
 ## Installation instructions
 To install this Python package, use Python's pip tool:
@@ -69,9 +73,11 @@ of environments, meaning the environment has to be controlled from a different
 computer than the one that runs the actual environment. This will add some
 latency and may make your training sessions less efficient.
 
-Warning: currently the code for the NetworkEnv class lacks basic security
-features. I hope to implement some of those in the near future. Pull requests
-are welcome.
+**Warning:** currently the code for the NetworkEnv class lacks basic security
+features. The environments that run on the server are completely controlled
+by the client, and will run code without question. **Use at your own risk.** If
+you trust the client and server nodes, the network, and the environment, then
+you will probably be fine, but take this with a mountain of salt.
 
 The NetworkEnv class is designed to be used with any gym environment, but at
 the moment it assumes the actions and observations of any underlying
@@ -82,29 +88,28 @@ you could easily implement this yourself, by adding functionality to
 gym_space_to_dict in bikey.network.env_process as well as dict_to_gym_space in
 bikey.network.network_env. Simply put the details necessary to describe and
 reconstruct a space in a dictionary, and make sure this dictionary can be
-converted to JSON.
+serialized as JSON.
 
-Run the `bikey.network.server` module to start an environment server:
+Run the `bikey.network.server` script to start an environment server:
 
 ```
 python -m bikey.network.server
 
-# or use the -h flag to display the command's options:
+# or use the -h or --help flag to display the command's options:
 python -m bikey.network.server -h
 ```
 
-To shut down the server the following command should be executed **on the
-machine that started the server**, otherwise it will be ignored:
+To shut down the server use the -s or --stop flags:
 
 ```
-python -m bikey.network.server_shutdown
+python -m bikey.network.server --stop
 ```
 
-This command will not automatically detect the address and port of a running
-server: they should be provided to the script. For an overview of the shutdown
-script, run it with the `-h` flag.
+It should be run **on the machine that started the server**, otherwise the
+server will not shut down. This command will not automatically detect the
+address and port of a running server: they should be provided to the script.
 
-## Creating a custom Simulink environment
+## Custom Simulink environments (work in progress)
 This package makes creating your own Simulink environments as easy as possible.
 All you need to do is subclass bikey.spacar.SpacarEnv, override the
 process_step() function with the code for your own environment, and set up 
