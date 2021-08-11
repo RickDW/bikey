@@ -38,6 +38,12 @@ pip install -e .
 # updates from Github, etc. without having to reinstall bikey
 ```
 
+## Dependencies
+In order to use this package, please make sure Gym and Numpy are installed. The
+final package that is needed is the Matlab Engine. Please refer to the
+[Matlab documentation](https://nl.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
+for installation instructions.
+
 ## Usage
 The two main components of this package are the SpacarEnv and BicycleEnv
 classes. SpacarEnv is not a full gym environment, therefore only BicycleEnv
