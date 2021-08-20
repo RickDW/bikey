@@ -19,6 +19,13 @@ should run fine without it. I want to refactor the code so it is more suited
 for use without Spacar, however I am unsure when this will be
 finished. I am aiming for sometime in the next two months.**
 
+## Table of contents
+- [Installation instructions](#installation-instructions)
+- [Dependencies](#dependencies)
+- [Usage](#usage)
+- [Custom Simulink environments](#custom-simulink-environments)
+- [Networked environments](#networked-environments)
+
 ## Installation instructions
 To install this Python package, use Python's pip tool:
 
@@ -72,6 +79,28 @@ env_with_options = gym.make(
 )
 ```
 
+## Custom Simulink environments
+
+**This functionality is currently being updated.**
+
+This package makes creating your own Simulink environments as easy as possible.
+All you need to do is subclass bikey.simulink.SimulinkEnv, override the
+process_step() function with the code for your own environment, and set up 
+the correct observation and action spaces. The process_step() function defines
+the rules of the environment: it determines rewards, when to end an episode,
+and additionally it can provide some general info that can be useful when 
+debugging a RL training session.
+
+The basic Simulink template file has a very simple Simulink model: actions are
+provided to Simulink through a constant block, and outputs are read out from
+the Matlab workspace. If you need to customize this feel free to do so, but
+make sure there is a constant block with name 'actions', and a block that
+saves the last, and only the last, Spacar observation to 'out.observations' in
+the Matlab workspace.
+
+Along with all of the settings available when instantiating an environment,
+this should give you plenty of room to create any setup you want.
+
 ## Networked environments
 The project for which this package is designed has a need for remote execution
 of environments, meaning the environment has to be controlled from a different
@@ -113,22 +142,3 @@ python -m bikey.network.server --stop
 It should be run **on the machine that started the server**, otherwise the
 server will not shut down. This command will not automatically detect the
 address and port of a running server: they should be provided to the script.
-
-## Custom Simulink environments (work in progress)
-This package makes creating your own Simulink environments as easy as possible.
-All you need to do is subclass bikey.simulink.SimulinkEnv, override the
-process_step() function with the code for your own environment, and set up 
-the correct observation and action spaces. The process_step() function defines
-the rules of the environment: it determines rewards, when to end an episode,
-and additionally it can provide some general info that can be useful when 
-debugging a RL training session.
-
-The basic Simulink template file has a very simple Simulink model: actions are
-provided to Simulink through a constant block, and outputs are read out from
-the Matlab workspace. If you need to customize this feel free to do so, but
-make sure there is a constant block with name 'actions', and a block that
-saves the last, and only the last, Spacar observation to 'out.observations' in
-the Matlab workspace.
-
-Along with all of the settings available when instantiating an environment,
-this should give you plenty of room to create any setup you want.
